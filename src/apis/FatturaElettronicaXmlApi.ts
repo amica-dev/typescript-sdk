@@ -1,0 +1,1535 @@
+/* tslint:disable */
+/* eslint-disable */
+/**
+ * Customers API
+ * La Customers API fornisce accesso programmatico a tutti i dati aziendali gestiti da [Amica 20](https://gestionaleamica.com). Supporta il ciclo completo di documenti, fatture, magazzino, contabilità e anagrafiche. Per guide e documentazione completa, visitare [amica.dev](https://amica.dev/).  ## Autenticazione  Tutte le richieste API richiedono un token OAuth 2.0 Bearer valido, da includere nell\'header `Authorization`:  ``` Authorization: Bearer <token> ```  ### Registra la tua app  Per integrare la Customers API registra la tua applicazione sull\'**App Store di Amica**. Al termine della registrazione ottieni una coppia di credenziali OAuth 2.0 — `client_id` e `client_secret` (il secret è mostrato **una sola volta**) — e scegli gli **scope** e il **flusso di autenticazione** desiderati.  ### Scegli il flusso  - **Authorization Code con PKCE** (consigliato per app che operano per conto di un utente Amica): l\'utente autorizza la tua app tramite la pagina di consenso dell\'identity provider; la tua app riceve un `code` da scambiare con un access token.    ```   GET  {identity-provider}/connect/authorize?response_type=code&client_id=<client_id>&redirect_uri=<redirect_uri>&scope=openid%20read%20write%20documenti&code_challenge=<challenge>&code_challenge_method=S256   POST {identity-provider}/connect/token        grant_type=authorization_code&code=<code>&code_verifier=<verifier>&client_id=<client_id>&client_secret=<client_secret>&redirect_uri=<redirect_uri>   ```  - **Client Credentials** (per integrazioni server-to-server, senza utente interattivo):    ```   POST {identity-provider}/connect/token   Content-Type: application/x-www-form-urlencoded    grant_type=client_credentials&client_id=<client_id>&client_secret=<client_secret>&scope=read write documenti contabilita   ```    > **Nota:** il flusso Client Credentials è disponibile solo per le **app private**, non per quelle pubblicate sul marketplace.  In entrambi i casi la risposta contiene l\'`access_token` (JWT con `aud: amica-cloud`) da usare nelle chiamate successive finché non scade (`expires_in`), dopodiché va richiesto un nuovo token. Ogni token contiene uno o più **scope** che determinano le aree accessibili (vedi sotto). Dalla [API Reference](https://amica.dev) è possibile incollare un access token per provare gli endpoint direttamente dal browser.  ## Scope di autorizzazione  L\'accesso agli endpoint è governato dagli scope presenti nel token OAuth:  | Scope | Descrizione | |-------|-------------| | `comune` | Anagrafiche: contatti, indirizzi, nazioni, valute, modalità di pagamento, ecc. | | `magazzino` | Magazzino: articoli, listini, movimenti di magazzino, giacenze, distinte base. | | `contabilita` | Contabilità: registrazioni contabili, scadenze, castelletti IVA, fatture elettroniche XML. | | `documenti` | Documenti: fatture, note di credito, DDT, ordini, preventivi, proforma ed emissione. |  Una richiesta verso un endpoint non coperto dallo scope del token riceverà una risposta `403 Forbidden`.  ## Company ID  La maggior parte degli endpoint è relativa a una specifica azienda e segue il pattern:  ``` /api/v3/{companyId}/risorsa ```  Il `companyId` è l\'identificativo univoco di ciascun database aziendale. Usare l\'endpoint `GET /api/v3/config/Azienda` per ottenere l\'elenco delle aziende disponibili.  ## Paginazione  Gli endpoint che restituiscono liste supportano la paginazione tramite query parameter:  | Parametro | Descrizione | |-----------|-------------| | `Skip` | Numero di elementi da saltare dall\'inizio del set di risultati. | | `Take` | Numero di elementi da includere nella risposta. |  La risposta include due header:  | Header | Descrizione | |--------|-------------| | `X-Read-TotalCount` | Numero totale di elementi che soddisfano il filtro corrente. | | `X-Read-Count` | Numero di elementi effettivamente restituiti nel body della risposta. |  ## Ordinamento e filtri  Gli endpoint lista accettano parametri aggiuntivi:  | Parametro | Descrizione | |-----------|-------------| | `Order` | Lista di proprietà per l\'ordinamento, separate da virgola. Un segno meno (`-`) prima del nome indica ordine discendente. Es. `-RagioneSociale1,Citta`. | | `Filter` | Condizioni di ricerca: lista di espressioni separate da virgola, ciascuna formata da nome campo, operatore, valore ed eventuale connettore logico. Operatori: `$eq`, `$ne`, `$gt`, `$lt`, `$lte`, `$gte`, `$ct` (contiene), `$nct`, `$sw` (inizia con), `$ew` (finisce con). Connettori: `$and` (default, omissibile) e `$or`; le sotto-query si racchiudono tra `[]`. Es. `RagioneSociale1 $ct acme $or, Fido $gt 1000`. | | `SkipTotalCount` | Se `true`, l\'header `X-Read-TotalCount` viene omesso dalla risposta: migliori prestazioni a scapito del conteggio totale. Default `false`. |  ## Espansione oggetti correlati  Gli endpoint singoli e lista supportano il parametro `Expand`. Quando fornito, gli oggetti correlati vengono inclusi inline nella risposta anziché restituiti come riferimenti. È possibile specificare espansioni multiple separate da virgola.  ## Gestione errori  L\'API usa codici di stato HTTP standard e restituisce [RFC 7807](https://tools.ietf.org/html/rfc7807) Problem Details in caso di errore:  | Codice | Significato | |--------|-------------| | `400` | Bad Request — validazione fallita o parametro obbligatorio mancante. | | `401` | Unauthorized — token mancante o scaduto. | | `403` | Forbidden — il token non possiede lo scope richiesto. | | `404` | Not Found — la risorsa richiesta non esiste. | | `409` | Conflict — conflitto di concorrenza. | | `422` | Unprocessable Entity — entità non processabile (es. token di concorrenza obsoleto). |  Alcune risposte `400` includono un campo `overridable` che indica se l\'errore di validazione può essere ignorato impostando il parametro `validationOverride` a `true`.  ## Controllo della concorrenza  Le entità contengono una proprietà `ConcurrencyToken`. Quando si aggiorna un\'entità tramite `PUT`, il token nel body della richiesta viene confrontato con il valore memorizzato. Se differiscono, viene restituito un `422 Unprocessable Entity`. Usare sempre l\'ultimo token ricevuto da una risposta `GET` o `POST`. 
+ *
+ * The version of the OpenAPI document: v3
+ * Contact: assistenza@gestionaleamica.com
+ *
+ * NOTE: This class is auto generated by OpenAPI Generator (https://openapi-generator.tech).
+ * https://openapi-generator.tech
+ * Do not edit the class manually.
+ */
+
+
+import * as runtime from '../runtime';
+import type {
+  AllegatoDocumento,
+  FatturaElettronicaExportOptions,
+  FatturaElettronicaExportResult,
+  FatturaElettronicaImportResult,
+  FatturaElettronicaUploadOptions,
+  FatturaElettronicaUploadResult,
+  FatturaElettronicaXml,
+  FatturaElettronicaXmlGetArchiveByDateRangeOptions,
+  FatturaElettronicaXmlGetArchiveByFileNameOptions,
+  FatturaElettronicaXmlStyleSheetData,
+  ProblemDetails,
+} from '../models/index';
+import {
+    AllegatoDocumentoFromJSON,
+    AllegatoDocumentoToJSON,
+    FatturaElettronicaExportOptionsFromJSON,
+    FatturaElettronicaExportOptionsToJSON,
+    FatturaElettronicaExportResultFromJSON,
+    FatturaElettronicaExportResultToJSON,
+    FatturaElettronicaImportResultFromJSON,
+    FatturaElettronicaImportResultToJSON,
+    FatturaElettronicaUploadOptionsFromJSON,
+    FatturaElettronicaUploadOptionsToJSON,
+    FatturaElettronicaUploadResultFromJSON,
+    FatturaElettronicaUploadResultToJSON,
+    FatturaElettronicaXmlFromJSON,
+    FatturaElettronicaXmlToJSON,
+    FatturaElettronicaXmlGetArchiveByDateRangeOptionsFromJSON,
+    FatturaElettronicaXmlGetArchiveByDateRangeOptionsToJSON,
+    FatturaElettronicaXmlGetArchiveByFileNameOptionsFromJSON,
+    FatturaElettronicaXmlGetArchiveByFileNameOptionsToJSON,
+    FatturaElettronicaXmlStyleSheetDataFromJSON,
+    FatturaElettronicaXmlStyleSheetDataToJSON,
+    ProblemDetailsFromJSON,
+    ProblemDetailsToJSON,
+} from '../models/index';
+
+export interface ApiVversionCompanyIdFatturaElettronicaXmlArchivebydaterangePostRequest {
+    version: string;
+    companyId: string;
+    fatturaElettronicaXmlGetArchiveByDateRangeOptions?: FatturaElettronicaXmlGetArchiveByDateRangeOptions;
+}
+
+export interface ApiVversionCompanyIdFatturaElettronicaXmlArchivebyfilenamePostRequest {
+    version: string;
+    companyId: string;
+    fatturaElettronicaXmlGetArchiveByFileNameOptions?: FatturaElettronicaXmlGetArchiveByFileNameOptions;
+}
+
+export interface ApiVversionCompanyIdFatturaElettronicaXmlBulkDeleteRequest {
+    companyId: string;
+    version: string;
+}
+
+export interface ApiVversionCompanyIdFatturaElettronicaXmlBulkGetRequest {
+    companyId: string;
+    version: string;
+}
+
+export interface ApiVversionCompanyIdFatturaElettronicaXmlBulkPostRequest {
+    companyId: string;
+    version: string;
+    file?: Blob;
+}
+
+export interface ApiVversionCompanyIdFatturaElettronicaXmlExportPostRequest {
+    version: string;
+    companyId: string;
+    validationOverride?: boolean;
+    fatturaElettronicaExportOptions?: FatturaElettronicaExportOptions;
+}
+
+export interface ApiVversionCompanyIdFatturaElettronicaXmlFileNameAttachmentsGetRequest {
+    version: string;
+    companyId: string;
+    fileName: string;
+}
+
+export interface ApiVversionCompanyIdFatturaElettronicaXmlFileNameGetRequest {
+    version: string;
+    companyId: string;
+    fileName: string;
+}
+
+export interface ApiVversionCompanyIdFatturaElettronicaXmlGetRequest {
+    version: string;
+    companyId: string;
+    skip?: number;
+    take?: number;
+    skipTotalCount?: boolean;
+    filter?: string;
+    order?: string;
+    expand?: Array<string>;
+}
+
+export interface ApiVversionCompanyIdFatturaElettronicaXmlIdDeleteRequest {
+    version: string;
+    companyId: string;
+    id: number;
+}
+
+export interface ApiVversionCompanyIdFatturaElettronicaXmlIdGetRequest {
+    version: string;
+    companyId: string;
+    id: number;
+    expand?: Array<string>;
+}
+
+export interface ApiVversionCompanyIdFatturaElettronicaXmlIdPutRequest {
+    version: string;
+    companyId: string;
+    id: number;
+    validationOverride?: boolean;
+    fatturaElettronicaXml?: FatturaElettronicaXml;
+}
+
+export interface ApiVversionCompanyIdFatturaElettronicaXmlImportPostRequest {
+    version: string;
+    companyId: string;
+    dataConsegnaSdi?: Date;
+    identificativoSdi?: string;
+    file?: Blob;
+}
+
+export interface ApiVversionCompanyIdFatturaElettronicaXmlNewGetRequest {
+    version: string;
+    companyId: string;
+}
+
+export interface ApiVversionCompanyIdFatturaElettronicaXmlPairPostRequest {
+    version: string;
+    companyId: string;
+    fileName?: string;
+    progressivo?: string;
+    documentoId?: number;
+    file?: Blob;
+}
+
+export interface ApiVversionCompanyIdFatturaElettronicaXmlPostRequest {
+    version: string;
+    companyId: string;
+    validationOverride?: boolean;
+    fatturaElettronicaXml?: FatturaElettronicaXml;
+}
+
+export interface ApiVversionCompanyIdFatturaElettronicaXmlSdiDownloadEsitiPostRequest {
+    version: string;
+    companyId: string;
+}
+
+export interface ApiVversionCompanyIdFatturaElettronicaXmlSdiDownloadFatturePostRequest {
+    version: string;
+    companyId: string;
+}
+
+export interface ApiVversionCompanyIdFatturaElettronicaXmlSdiUploadPostRequest {
+    version: string;
+    companyId: string;
+    fatturaElettronicaUploadOptions?: FatturaElettronicaUploadOptions;
+}
+
+export interface ApiVversionCompanyIdFatturaElettronicaXmlStylesheetPostRequest {
+    version: string;
+    companyId: string;
+    fatturaElettronicaXmlStyleSheetData?: FatturaElettronicaXmlStyleSheetData;
+}
+
+/**
+ * 
+ */
+export class FatturaElettronicaXmlApi extends runtime.BaseAPI {
+
+    /**
+     * Non è possibile scaricare più di 350 file alla volta.
+     * Scarica un archivio ZIP di fatture XML, filtrate per intervallo di date.
+     */
+    async apiVversionCompanyIdFatturaElettronicaXmlArchivebydaterangePostRaw(requestParameters: ApiVversionCompanyIdFatturaElettronicaXmlArchivebydaterangePostRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<void>> {
+        if (requestParameters['version'] == null) {
+            throw new runtime.RequiredError(
+                'version',
+                'Required parameter "version" was null or undefined when calling apiVversionCompanyIdFatturaElettronicaXmlArchivebydaterangePost().'
+            );
+        }
+
+        if (requestParameters['companyId'] == null) {
+            throw new runtime.RequiredError(
+                'companyId',
+                'Required parameter "companyId" was null or undefined when calling apiVversionCompanyIdFatturaElettronicaXmlArchivebydaterangePost().'
+            );
+        }
+
+        const queryParameters: any = {};
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+        headerParameters['Content-Type'] = 'application/json';
+
+        if (this.configuration && this.configuration.accessToken) {
+            const token = this.configuration.accessToken;
+            const tokenString = await token("bearer", []);
+
+            if (tokenString) {
+                headerParameters["Authorization"] = `Bearer ${tokenString}`;
+            }
+        }
+        if (this.configuration && this.configuration.accessToken) {
+            // oauth required
+            headerParameters["Authorization"] = await this.configuration.accessToken("oauth2", []);
+        }
+
+        if (this.configuration && this.configuration.accessToken) {
+            // oauth required
+            headerParameters["Authorization"] = await this.configuration.accessToken("oauth2", []);
+        }
+
+        const response = await this.request({
+            path: `/api/v{version}/{companyId}/FatturaElettronicaXml/archivebydaterange`.replace(`{${"version"}}`, encodeURIComponent(String(requestParameters['version']))).replace(`{${"companyId"}}`, encodeURIComponent(String(requestParameters['companyId']))),
+            method: 'POST',
+            headers: headerParameters,
+            query: queryParameters,
+            body: FatturaElettronicaXmlGetArchiveByDateRangeOptionsToJSON(requestParameters['fatturaElettronicaXmlGetArchiveByDateRangeOptions']),
+        }, initOverrides);
+
+        return new runtime.VoidApiResponse(response);
+    }
+
+    /**
+     * Non è possibile scaricare più di 350 file alla volta.
+     * Scarica un archivio ZIP di fatture XML, filtrate per intervallo di date.
+     */
+    async apiVversionCompanyIdFatturaElettronicaXmlArchivebydaterangePost(requestParameters: ApiVversionCompanyIdFatturaElettronicaXmlArchivebydaterangePostRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<void> {
+        await this.apiVversionCompanyIdFatturaElettronicaXmlArchivebydaterangePostRaw(requestParameters, initOverrides);
+    }
+
+    /**
+     * Non è possibile scaricare più di 350 file alla volta.
+     * Scarica un archivio ZIP di fatture XML, filtrate per nome file.
+     */
+    async apiVversionCompanyIdFatturaElettronicaXmlArchivebyfilenamePostRaw(requestParameters: ApiVversionCompanyIdFatturaElettronicaXmlArchivebyfilenamePostRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<void>> {
+        if (requestParameters['version'] == null) {
+            throw new runtime.RequiredError(
+                'version',
+                'Required parameter "version" was null or undefined when calling apiVversionCompanyIdFatturaElettronicaXmlArchivebyfilenamePost().'
+            );
+        }
+
+        if (requestParameters['companyId'] == null) {
+            throw new runtime.RequiredError(
+                'companyId',
+                'Required parameter "companyId" was null or undefined when calling apiVversionCompanyIdFatturaElettronicaXmlArchivebyfilenamePost().'
+            );
+        }
+
+        const queryParameters: any = {};
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+        headerParameters['Content-Type'] = 'application/json';
+
+        if (this.configuration && this.configuration.accessToken) {
+            const token = this.configuration.accessToken;
+            const tokenString = await token("bearer", []);
+
+            if (tokenString) {
+                headerParameters["Authorization"] = `Bearer ${tokenString}`;
+            }
+        }
+        if (this.configuration && this.configuration.accessToken) {
+            // oauth required
+            headerParameters["Authorization"] = await this.configuration.accessToken("oauth2", []);
+        }
+
+        if (this.configuration && this.configuration.accessToken) {
+            // oauth required
+            headerParameters["Authorization"] = await this.configuration.accessToken("oauth2", []);
+        }
+
+        const response = await this.request({
+            path: `/api/v{version}/{companyId}/FatturaElettronicaXml/archivebyfilename`.replace(`{${"version"}}`, encodeURIComponent(String(requestParameters['version']))).replace(`{${"companyId"}}`, encodeURIComponent(String(requestParameters['companyId']))),
+            method: 'POST',
+            headers: headerParameters,
+            query: queryParameters,
+            body: FatturaElettronicaXmlGetArchiveByFileNameOptionsToJSON(requestParameters['fatturaElettronicaXmlGetArchiveByFileNameOptions']),
+        }, initOverrides);
+
+        return new runtime.VoidApiResponse(response);
+    }
+
+    /**
+     * Non è possibile scaricare più di 350 file alla volta.
+     * Scarica un archivio ZIP di fatture XML, filtrate per nome file.
+     */
+    async apiVversionCompanyIdFatturaElettronicaXmlArchivebyfilenamePost(requestParameters: ApiVversionCompanyIdFatturaElettronicaXmlArchivebyfilenamePostRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<void> {
+        await this.apiVversionCompanyIdFatturaElettronicaXmlArchivebyfilenamePostRaw(requestParameters, initOverrides);
+    }
+
+    /**
+     * Elimina in blocco tutte le fatture XML dell\'azienda.
+     */
+    async apiVversionCompanyIdFatturaElettronicaXmlBulkDeleteRaw(requestParameters: ApiVversionCompanyIdFatturaElettronicaXmlBulkDeleteRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<void>> {
+        if (requestParameters['companyId'] == null) {
+            throw new runtime.RequiredError(
+                'companyId',
+                'Required parameter "companyId" was null or undefined when calling apiVversionCompanyIdFatturaElettronicaXmlBulkDelete().'
+            );
+        }
+
+        if (requestParameters['version'] == null) {
+            throw new runtime.RequiredError(
+                'version',
+                'Required parameter "version" was null or undefined when calling apiVversionCompanyIdFatturaElettronicaXmlBulkDelete().'
+            );
+        }
+
+        const queryParameters: any = {};
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+        if (this.configuration && this.configuration.accessToken) {
+            const token = this.configuration.accessToken;
+            const tokenString = await token("bearer", []);
+
+            if (tokenString) {
+                headerParameters["Authorization"] = `Bearer ${tokenString}`;
+            }
+        }
+        if (this.configuration && this.configuration.accessToken) {
+            // oauth required
+            headerParameters["Authorization"] = await this.configuration.accessToken("oauth2", []);
+        }
+
+        if (this.configuration && this.configuration.accessToken) {
+            // oauth required
+            headerParameters["Authorization"] = await this.configuration.accessToken("oauth2", []);
+        }
+
+        const response = await this.request({
+            path: `/api/v{version}/{companyId}/FatturaElettronicaXml/bulk`.replace(`{${"companyId"}}`, encodeURIComponent(String(requestParameters['companyId']))).replace(`{${"version"}}`, encodeURIComponent(String(requestParameters['version']))),
+            method: 'DELETE',
+            headers: headerParameters,
+            query: queryParameters,
+        }, initOverrides);
+
+        return new runtime.VoidApiResponse(response);
+    }
+
+    /**
+     * Elimina in blocco tutte le fatture XML dell\'azienda.
+     */
+    async apiVversionCompanyIdFatturaElettronicaXmlBulkDelete(requestParameters: ApiVversionCompanyIdFatturaElettronicaXmlBulkDeleteRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<void> {
+        await this.apiVversionCompanyIdFatturaElettronicaXmlBulkDeleteRaw(requestParameters, initOverrides);
+    }
+
+    /**
+     * Scarica tutte le fatture XML come archivio ZIP.
+     */
+    async apiVversionCompanyIdFatturaElettronicaXmlBulkGetRaw(requestParameters: ApiVversionCompanyIdFatturaElettronicaXmlBulkGetRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<void>> {
+        if (requestParameters['companyId'] == null) {
+            throw new runtime.RequiredError(
+                'companyId',
+                'Required parameter "companyId" was null or undefined when calling apiVversionCompanyIdFatturaElettronicaXmlBulkGet().'
+            );
+        }
+
+        if (requestParameters['version'] == null) {
+            throw new runtime.RequiredError(
+                'version',
+                'Required parameter "version" was null or undefined when calling apiVversionCompanyIdFatturaElettronicaXmlBulkGet().'
+            );
+        }
+
+        const queryParameters: any = {};
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+        if (this.configuration && this.configuration.accessToken) {
+            const token = this.configuration.accessToken;
+            const tokenString = await token("bearer", []);
+
+            if (tokenString) {
+                headerParameters["Authorization"] = `Bearer ${tokenString}`;
+            }
+        }
+        if (this.configuration && this.configuration.accessToken) {
+            // oauth required
+            headerParameters["Authorization"] = await this.configuration.accessToken("oauth2", []);
+        }
+
+        if (this.configuration && this.configuration.accessToken) {
+            // oauth required
+            headerParameters["Authorization"] = await this.configuration.accessToken("oauth2", []);
+        }
+
+        const response = await this.request({
+            path: `/api/v{version}/{companyId}/FatturaElettronicaXml/bulk`.replace(`{${"companyId"}}`, encodeURIComponent(String(requestParameters['companyId']))).replace(`{${"version"}}`, encodeURIComponent(String(requestParameters['version']))),
+            method: 'GET',
+            headers: headerParameters,
+            query: queryParameters,
+        }, initOverrides);
+
+        return new runtime.VoidApiResponse(response);
+    }
+
+    /**
+     * Scarica tutte le fatture XML come archivio ZIP.
+     */
+    async apiVversionCompanyIdFatturaElettronicaXmlBulkGet(requestParameters: ApiVversionCompanyIdFatturaElettronicaXmlBulkGetRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<void> {
+        await this.apiVversionCompanyIdFatturaElettronicaXmlBulkGetRaw(requestParameters, initOverrides);
+    }
+
+    /**
+     * Carica in blocco fatture XML da un archivio ZIP.
+     */
+    async apiVversionCompanyIdFatturaElettronicaXmlBulkPostRaw(requestParameters: ApiVversionCompanyIdFatturaElettronicaXmlBulkPostRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<void>> {
+        if (requestParameters['companyId'] == null) {
+            throw new runtime.RequiredError(
+                'companyId',
+                'Required parameter "companyId" was null or undefined when calling apiVversionCompanyIdFatturaElettronicaXmlBulkPost().'
+            );
+        }
+
+        if (requestParameters['version'] == null) {
+            throw new runtime.RequiredError(
+                'version',
+                'Required parameter "version" was null or undefined when calling apiVversionCompanyIdFatturaElettronicaXmlBulkPost().'
+            );
+        }
+
+        const queryParameters: any = {};
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+        if (this.configuration && this.configuration.accessToken) {
+            const token = this.configuration.accessToken;
+            const tokenString = await token("bearer", []);
+
+            if (tokenString) {
+                headerParameters["Authorization"] = `Bearer ${tokenString}`;
+            }
+        }
+        if (this.configuration && this.configuration.accessToken) {
+            // oauth required
+            headerParameters["Authorization"] = await this.configuration.accessToken("oauth2", []);
+        }
+
+        if (this.configuration && this.configuration.accessToken) {
+            // oauth required
+            headerParameters["Authorization"] = await this.configuration.accessToken("oauth2", []);
+        }
+
+        const consumes: runtime.Consume[] = [
+            { contentType: 'multipart/form-data' },
+        ];
+        // @ts-ignore: canConsumeForm may be unused
+        const canConsumeForm = runtime.canConsumeForm(consumes);
+
+        let formParams: { append(param: string, value: any): any };
+        let useForm = false;
+        // use FormData to transmit files using content-type "multipart/form-data"
+        useForm = canConsumeForm;
+        if (useForm) {
+            formParams = new FormData();
+        } else {
+            formParams = new URLSearchParams();
+        }
+
+        if (requestParameters['file'] != null) {
+            formParams.append('file', requestParameters['file'] as any);
+        }
+
+        const response = await this.request({
+            path: `/api/v{version}/{companyId}/FatturaElettronicaXml/bulk`.replace(`{${"companyId"}}`, encodeURIComponent(String(requestParameters['companyId']))).replace(`{${"version"}}`, encodeURIComponent(String(requestParameters['version']))),
+            method: 'POST',
+            headers: headerParameters,
+            query: queryParameters,
+            body: formParams,
+        }, initOverrides);
+
+        return new runtime.VoidApiResponse(response);
+    }
+
+    /**
+     * Carica in blocco fatture XML da un archivio ZIP.
+     */
+    async apiVversionCompanyIdFatturaElettronicaXmlBulkPost(requestParameters: ApiVversionCompanyIdFatturaElettronicaXmlBulkPostRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<void> {
+        await this.apiVversionCompanyIdFatturaElettronicaXmlBulkPostRaw(requestParameters, initOverrides);
+    }
+
+    /**
+     * Tutti i documenti devono riferirsi alla stessa <a href=\"#tag/Anagrafica\">Anagrafica</a>.
+     * Esporta uno o più documenti in una fattura XML.
+     */
+    async apiVversionCompanyIdFatturaElettronicaXmlExportPostRaw(requestParameters: ApiVversionCompanyIdFatturaElettronicaXmlExportPostRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<FatturaElettronicaExportResult>> {
+        if (requestParameters['version'] == null) {
+            throw new runtime.RequiredError(
+                'version',
+                'Required parameter "version" was null or undefined when calling apiVversionCompanyIdFatturaElettronicaXmlExportPost().'
+            );
+        }
+
+        if (requestParameters['companyId'] == null) {
+            throw new runtime.RequiredError(
+                'companyId',
+                'Required parameter "companyId" was null or undefined when calling apiVversionCompanyIdFatturaElettronicaXmlExportPost().'
+            );
+        }
+
+        const queryParameters: any = {};
+
+        if (requestParameters['validationOverride'] != null) {
+            queryParameters['validationOverride'] = requestParameters['validationOverride'];
+        }
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+        headerParameters['Content-Type'] = 'application/json';
+
+        if (this.configuration && this.configuration.accessToken) {
+            const token = this.configuration.accessToken;
+            const tokenString = await token("bearer", []);
+
+            if (tokenString) {
+                headerParameters["Authorization"] = `Bearer ${tokenString}`;
+            }
+        }
+        if (this.configuration && this.configuration.accessToken) {
+            // oauth required
+            headerParameters["Authorization"] = await this.configuration.accessToken("oauth2", []);
+        }
+
+        if (this.configuration && this.configuration.accessToken) {
+            // oauth required
+            headerParameters["Authorization"] = await this.configuration.accessToken("oauth2", []);
+        }
+
+        const response = await this.request({
+            path: `/api/v{version}/{companyId}/FatturaElettronicaXml/export`.replace(`{${"version"}}`, encodeURIComponent(String(requestParameters['version']))).replace(`{${"companyId"}}`, encodeURIComponent(String(requestParameters['companyId']))),
+            method: 'POST',
+            headers: headerParameters,
+            query: queryParameters,
+            body: FatturaElettronicaExportOptionsToJSON(requestParameters['fatturaElettronicaExportOptions']),
+        }, initOverrides);
+
+        return new runtime.JSONApiResponse(response, (jsonValue) => FatturaElettronicaExportResultFromJSON(jsonValue));
+    }
+
+    /**
+     * Tutti i documenti devono riferirsi alla stessa <a href=\"#tag/Anagrafica\">Anagrafica</a>.
+     * Esporta uno o più documenti in una fattura XML.
+     */
+    async apiVversionCompanyIdFatturaElettronicaXmlExportPost(requestParameters: ApiVversionCompanyIdFatturaElettronicaXmlExportPostRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<FatturaElettronicaExportResult> {
+        const response = await this.apiVversionCompanyIdFatturaElettronicaXmlExportPostRaw(requestParameters, initOverrides);
+        return await response.value();
+    }
+
+    /**
+     * Scarica i file allegati di una fattura XML.
+     */
+    async apiVversionCompanyIdFatturaElettronicaXmlFileNameAttachmentsGetRaw(requestParameters: ApiVversionCompanyIdFatturaElettronicaXmlFileNameAttachmentsGetRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<Array<AllegatoDocumento>>> {
+        if (requestParameters['version'] == null) {
+            throw new runtime.RequiredError(
+                'version',
+                'Required parameter "version" was null or undefined when calling apiVversionCompanyIdFatturaElettronicaXmlFileNameAttachmentsGet().'
+            );
+        }
+
+        if (requestParameters['companyId'] == null) {
+            throw new runtime.RequiredError(
+                'companyId',
+                'Required parameter "companyId" was null or undefined when calling apiVversionCompanyIdFatturaElettronicaXmlFileNameAttachmentsGet().'
+            );
+        }
+
+        if (requestParameters['fileName'] == null) {
+            throw new runtime.RequiredError(
+                'fileName',
+                'Required parameter "fileName" was null or undefined when calling apiVversionCompanyIdFatturaElettronicaXmlFileNameAttachmentsGet().'
+            );
+        }
+
+        const queryParameters: any = {};
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+        if (this.configuration && this.configuration.accessToken) {
+            const token = this.configuration.accessToken;
+            const tokenString = await token("bearer", []);
+
+            if (tokenString) {
+                headerParameters["Authorization"] = `Bearer ${tokenString}`;
+            }
+        }
+        if (this.configuration && this.configuration.accessToken) {
+            // oauth required
+            headerParameters["Authorization"] = await this.configuration.accessToken("oauth2", []);
+        }
+
+        if (this.configuration && this.configuration.accessToken) {
+            // oauth required
+            headerParameters["Authorization"] = await this.configuration.accessToken("oauth2", []);
+        }
+
+        const response = await this.request({
+            path: `/api/v{version}/{companyId}/FatturaElettronicaXml/{fileName}/attachments`.replace(`{${"version"}}`, encodeURIComponent(String(requestParameters['version']))).replace(`{${"companyId"}}`, encodeURIComponent(String(requestParameters['companyId']))).replace(`{${"fileName"}}`, encodeURIComponent(String(requestParameters['fileName']))),
+            method: 'GET',
+            headers: headerParameters,
+            query: queryParameters,
+        }, initOverrides);
+
+        return new runtime.JSONApiResponse(response, (jsonValue) => jsonValue.map(AllegatoDocumentoFromJSON));
+    }
+
+    /**
+     * Scarica i file allegati di una fattura XML.
+     */
+    async apiVversionCompanyIdFatturaElettronicaXmlFileNameAttachmentsGet(requestParameters: ApiVversionCompanyIdFatturaElettronicaXmlFileNameAttachmentsGetRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<Array<AllegatoDocumento>> {
+        const response = await this.apiVversionCompanyIdFatturaElettronicaXmlFileNameAttachmentsGetRaw(requestParameters, initOverrides);
+        return await response.value();
+    }
+
+    /**
+     * Recupera una fattura XML per nome file.
+     */
+    async apiVversionCompanyIdFatturaElettronicaXmlFileNameGetRaw(requestParameters: ApiVversionCompanyIdFatturaElettronicaXmlFileNameGetRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<void>> {
+        if (requestParameters['version'] == null) {
+            throw new runtime.RequiredError(
+                'version',
+                'Required parameter "version" was null or undefined when calling apiVversionCompanyIdFatturaElettronicaXmlFileNameGet().'
+            );
+        }
+
+        if (requestParameters['companyId'] == null) {
+            throw new runtime.RequiredError(
+                'companyId',
+                'Required parameter "companyId" was null or undefined when calling apiVversionCompanyIdFatturaElettronicaXmlFileNameGet().'
+            );
+        }
+
+        if (requestParameters['fileName'] == null) {
+            throw new runtime.RequiredError(
+                'fileName',
+                'Required parameter "fileName" was null or undefined when calling apiVversionCompanyIdFatturaElettronicaXmlFileNameGet().'
+            );
+        }
+
+        const queryParameters: any = {};
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+        if (this.configuration && this.configuration.accessToken) {
+            const token = this.configuration.accessToken;
+            const tokenString = await token("bearer", []);
+
+            if (tokenString) {
+                headerParameters["Authorization"] = `Bearer ${tokenString}`;
+            }
+        }
+        if (this.configuration && this.configuration.accessToken) {
+            // oauth required
+            headerParameters["Authorization"] = await this.configuration.accessToken("oauth2", []);
+        }
+
+        if (this.configuration && this.configuration.accessToken) {
+            // oauth required
+            headerParameters["Authorization"] = await this.configuration.accessToken("oauth2", []);
+        }
+
+        const response = await this.request({
+            path: `/api/v{version}/{companyId}/FatturaElettronicaXml/{fileName}`.replace(`{${"version"}}`, encodeURIComponent(String(requestParameters['version']))).replace(`{${"companyId"}}`, encodeURIComponent(String(requestParameters['companyId']))).replace(`{${"fileName"}}`, encodeURIComponent(String(requestParameters['fileName']))),
+            method: 'GET',
+            headers: headerParameters,
+            query: queryParameters,
+        }, initOverrides);
+
+        return new runtime.VoidApiResponse(response);
+    }
+
+    /**
+     * Recupera una fattura XML per nome file.
+     */
+    async apiVversionCompanyIdFatturaElettronicaXmlFileNameGet(requestParameters: ApiVversionCompanyIdFatturaElettronicaXmlFileNameGetRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<void> {
+        await this.apiVversionCompanyIdFatturaElettronicaXmlFileNameGetRaw(requestParameters, initOverrides);
+    }
+
+    /**
+     *  La risposta include due header con informazioni sui risultati.  `X-Read-TotalCount` indica il numero di elementi che soddisfano il filtro impostato nella query;  `X-Read-Count` indica il numero di elementi effettivamente contenuti nella risposta.  I due header possono riportare valori diversi quando i parametri `Take` e `Skip` sono stati usati nelle opzioni di query.
+     * Restituisce una lista di elementi.
+     */
+    async apiVversionCompanyIdFatturaElettronicaXmlGetRaw(requestParameters: ApiVversionCompanyIdFatturaElettronicaXmlGetRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<Array<FatturaElettronicaXml>>> {
+        if (requestParameters['version'] == null) {
+            throw new runtime.RequiredError(
+                'version',
+                'Required parameter "version" was null or undefined when calling apiVversionCompanyIdFatturaElettronicaXmlGet().'
+            );
+        }
+
+        if (requestParameters['companyId'] == null) {
+            throw new runtime.RequiredError(
+                'companyId',
+                'Required parameter "companyId" was null or undefined when calling apiVversionCompanyIdFatturaElettronicaXmlGet().'
+            );
+        }
+
+        const queryParameters: any = {};
+
+        if (requestParameters['skip'] != null) {
+            queryParameters['Skip'] = requestParameters['skip'];
+        }
+
+        if (requestParameters['take'] != null) {
+            queryParameters['Take'] = requestParameters['take'];
+        }
+
+        if (requestParameters['skipTotalCount'] != null) {
+            queryParameters['SkipTotalCount'] = requestParameters['skipTotalCount'];
+        }
+
+        if (requestParameters['filter'] != null) {
+            queryParameters['Filter'] = requestParameters['filter'];
+        }
+
+        if (requestParameters['order'] != null) {
+            queryParameters['Order'] = requestParameters['order'];
+        }
+
+        if (requestParameters['expand'] != null) {
+            queryParameters['Expand'] = requestParameters['expand'];
+        }
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+        if (this.configuration && this.configuration.accessToken) {
+            const token = this.configuration.accessToken;
+            const tokenString = await token("bearer", []);
+
+            if (tokenString) {
+                headerParameters["Authorization"] = `Bearer ${tokenString}`;
+            }
+        }
+        if (this.configuration && this.configuration.accessToken) {
+            // oauth required
+            headerParameters["Authorization"] = await this.configuration.accessToken("oauth2", []);
+        }
+
+        if (this.configuration && this.configuration.accessToken) {
+            // oauth required
+            headerParameters["Authorization"] = await this.configuration.accessToken("oauth2", []);
+        }
+
+        const response = await this.request({
+            path: `/api/v{version}/{companyId}/FatturaElettronicaXml`.replace(`{${"version"}}`, encodeURIComponent(String(requestParameters['version']))).replace(`{${"companyId"}}`, encodeURIComponent(String(requestParameters['companyId']))),
+            method: 'GET',
+            headers: headerParameters,
+            query: queryParameters,
+        }, initOverrides);
+
+        return new runtime.JSONApiResponse(response, (jsonValue) => jsonValue.map(FatturaElettronicaXmlFromJSON));
+    }
+
+    /**
+     *  La risposta include due header con informazioni sui risultati.  `X-Read-TotalCount` indica il numero di elementi che soddisfano il filtro impostato nella query;  `X-Read-Count` indica il numero di elementi effettivamente contenuti nella risposta.  I due header possono riportare valori diversi quando i parametri `Take` e `Skip` sono stati usati nelle opzioni di query.
+     * Restituisce una lista di elementi.
+     */
+    async apiVversionCompanyIdFatturaElettronicaXmlGet(requestParameters: ApiVversionCompanyIdFatturaElettronicaXmlGetRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<Array<FatturaElettronicaXml>> {
+        const response = await this.apiVversionCompanyIdFatturaElettronicaXmlGetRaw(requestParameters, initOverrides);
+        return await response.value();
+    }
+
+    /**
+     * Elimina un elemento.
+     */
+    async apiVversionCompanyIdFatturaElettronicaXmlIdDeleteRaw(requestParameters: ApiVversionCompanyIdFatturaElettronicaXmlIdDeleteRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<FatturaElettronicaXml>> {
+        if (requestParameters['version'] == null) {
+            throw new runtime.RequiredError(
+                'version',
+                'Required parameter "version" was null or undefined when calling apiVversionCompanyIdFatturaElettronicaXmlIdDelete().'
+            );
+        }
+
+        if (requestParameters['companyId'] == null) {
+            throw new runtime.RequiredError(
+                'companyId',
+                'Required parameter "companyId" was null or undefined when calling apiVversionCompanyIdFatturaElettronicaXmlIdDelete().'
+            );
+        }
+
+        if (requestParameters['id'] == null) {
+            throw new runtime.RequiredError(
+                'id',
+                'Required parameter "id" was null or undefined when calling apiVversionCompanyIdFatturaElettronicaXmlIdDelete().'
+            );
+        }
+
+        const queryParameters: any = {};
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+        if (this.configuration && this.configuration.accessToken) {
+            const token = this.configuration.accessToken;
+            const tokenString = await token("bearer", []);
+
+            if (tokenString) {
+                headerParameters["Authorization"] = `Bearer ${tokenString}`;
+            }
+        }
+        if (this.configuration && this.configuration.accessToken) {
+            // oauth required
+            headerParameters["Authorization"] = await this.configuration.accessToken("oauth2", []);
+        }
+
+        if (this.configuration && this.configuration.accessToken) {
+            // oauth required
+            headerParameters["Authorization"] = await this.configuration.accessToken("oauth2", []);
+        }
+
+        const response = await this.request({
+            path: `/api/v{version}/{companyId}/FatturaElettronicaXml/{id}`.replace(`{${"version"}}`, encodeURIComponent(String(requestParameters['version']))).replace(`{${"companyId"}}`, encodeURIComponent(String(requestParameters['companyId']))).replace(`{${"id"}}`, encodeURIComponent(String(requestParameters['id']))),
+            method: 'DELETE',
+            headers: headerParameters,
+            query: queryParameters,
+        }, initOverrides);
+
+        return new runtime.JSONApiResponse(response, (jsonValue) => FatturaElettronicaXmlFromJSON(jsonValue));
+    }
+
+    /**
+     * Elimina un elemento.
+     */
+    async apiVversionCompanyIdFatturaElettronicaXmlIdDelete(requestParameters: ApiVversionCompanyIdFatturaElettronicaXmlIdDeleteRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<FatturaElettronicaXml> {
+        const response = await this.apiVversionCompanyIdFatturaElettronicaXmlIdDeleteRaw(requestParameters, initOverrides);
+        return await response.value();
+    }
+
+    /**
+     * Restituisce un elemento.
+     */
+    async apiVversionCompanyIdFatturaElettronicaXmlIdGetRaw(requestParameters: ApiVversionCompanyIdFatturaElettronicaXmlIdGetRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<FatturaElettronicaXml>> {
+        if (requestParameters['version'] == null) {
+            throw new runtime.RequiredError(
+                'version',
+                'Required parameter "version" was null or undefined when calling apiVversionCompanyIdFatturaElettronicaXmlIdGet().'
+            );
+        }
+
+        if (requestParameters['companyId'] == null) {
+            throw new runtime.RequiredError(
+                'companyId',
+                'Required parameter "companyId" was null or undefined when calling apiVversionCompanyIdFatturaElettronicaXmlIdGet().'
+            );
+        }
+
+        if (requestParameters['id'] == null) {
+            throw new runtime.RequiredError(
+                'id',
+                'Required parameter "id" was null or undefined when calling apiVversionCompanyIdFatturaElettronicaXmlIdGet().'
+            );
+        }
+
+        const queryParameters: any = {};
+
+        if (requestParameters['expand'] != null) {
+            queryParameters['Expand'] = requestParameters['expand'];
+        }
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+        if (this.configuration && this.configuration.accessToken) {
+            const token = this.configuration.accessToken;
+            const tokenString = await token("bearer", []);
+
+            if (tokenString) {
+                headerParameters["Authorization"] = `Bearer ${tokenString}`;
+            }
+        }
+        if (this.configuration && this.configuration.accessToken) {
+            // oauth required
+            headerParameters["Authorization"] = await this.configuration.accessToken("oauth2", []);
+        }
+
+        if (this.configuration && this.configuration.accessToken) {
+            // oauth required
+            headerParameters["Authorization"] = await this.configuration.accessToken("oauth2", []);
+        }
+
+        const response = await this.request({
+            path: `/api/v{version}/{companyId}/FatturaElettronicaXml/{id}`.replace(`{${"version"}}`, encodeURIComponent(String(requestParameters['version']))).replace(`{${"companyId"}}`, encodeURIComponent(String(requestParameters['companyId']))).replace(`{${"id"}}`, encodeURIComponent(String(requestParameters['id']))),
+            method: 'GET',
+            headers: headerParameters,
+            query: queryParameters,
+        }, initOverrides);
+
+        return new runtime.JSONApiResponse(response, (jsonValue) => FatturaElettronicaXmlFromJSON(jsonValue));
+    }
+
+    /**
+     * Restituisce un elemento.
+     */
+    async apiVversionCompanyIdFatturaElettronicaXmlIdGet(requestParameters: ApiVversionCompanyIdFatturaElettronicaXmlIdGetRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<FatturaElettronicaXml> {
+        const response = await this.apiVversionCompanyIdFatturaElettronicaXmlIdGetRaw(requestParameters, initOverrides);
+        return await response.value();
+    }
+
+    /**
+     * Aggiorna un elemento esistente.
+     */
+    async apiVversionCompanyIdFatturaElettronicaXmlIdPutRaw(requestParameters: ApiVversionCompanyIdFatturaElettronicaXmlIdPutRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<FatturaElettronicaXml>> {
+        if (requestParameters['version'] == null) {
+            throw new runtime.RequiredError(
+                'version',
+                'Required parameter "version" was null or undefined when calling apiVversionCompanyIdFatturaElettronicaXmlIdPut().'
+            );
+        }
+
+        if (requestParameters['companyId'] == null) {
+            throw new runtime.RequiredError(
+                'companyId',
+                'Required parameter "companyId" was null or undefined when calling apiVversionCompanyIdFatturaElettronicaXmlIdPut().'
+            );
+        }
+
+        if (requestParameters['id'] == null) {
+            throw new runtime.RequiredError(
+                'id',
+                'Required parameter "id" was null or undefined when calling apiVversionCompanyIdFatturaElettronicaXmlIdPut().'
+            );
+        }
+
+        const queryParameters: any = {};
+
+        if (requestParameters['validationOverride'] != null) {
+            queryParameters['validationOverride'] = requestParameters['validationOverride'];
+        }
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+        headerParameters['Content-Type'] = 'application/json';
+
+        if (this.configuration && this.configuration.accessToken) {
+            const token = this.configuration.accessToken;
+            const tokenString = await token("bearer", []);
+
+            if (tokenString) {
+                headerParameters["Authorization"] = `Bearer ${tokenString}`;
+            }
+        }
+        if (this.configuration && this.configuration.accessToken) {
+            // oauth required
+            headerParameters["Authorization"] = await this.configuration.accessToken("oauth2", []);
+        }
+
+        if (this.configuration && this.configuration.accessToken) {
+            // oauth required
+            headerParameters["Authorization"] = await this.configuration.accessToken("oauth2", []);
+        }
+
+        const response = await this.request({
+            path: `/api/v{version}/{companyId}/FatturaElettronicaXml/{id}`.replace(`{${"version"}}`, encodeURIComponent(String(requestParameters['version']))).replace(`{${"companyId"}}`, encodeURIComponent(String(requestParameters['companyId']))).replace(`{${"id"}}`, encodeURIComponent(String(requestParameters['id']))),
+            method: 'PUT',
+            headers: headerParameters,
+            query: queryParameters,
+            body: FatturaElettronicaXmlToJSON(requestParameters['fatturaElettronicaXml']),
+        }, initOverrides);
+
+        return new runtime.JSONApiResponse(response, (jsonValue) => FatturaElettronicaXmlFromJSON(jsonValue));
+    }
+
+    /**
+     * Aggiorna un elemento esistente.
+     */
+    async apiVversionCompanyIdFatturaElettronicaXmlIdPut(requestParameters: ApiVversionCompanyIdFatturaElettronicaXmlIdPutRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<FatturaElettronicaXml> {
+        const response = await this.apiVversionCompanyIdFatturaElettronicaXmlIdPutRaw(requestParameters, initOverrides);
+        return await response.value();
+    }
+
+    /**
+     * Viene creato un nuovo <a href=\"#tag/Documento\">Documento</a> corrispondente al contenuto XML.
+     * Importa una fattura XML.
+     */
+    async apiVversionCompanyIdFatturaElettronicaXmlImportPostRaw(requestParameters: ApiVversionCompanyIdFatturaElettronicaXmlImportPostRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<Array<FatturaElettronicaImportResult>>> {
+        if (requestParameters['version'] == null) {
+            throw new runtime.RequiredError(
+                'version',
+                'Required parameter "version" was null or undefined when calling apiVversionCompanyIdFatturaElettronicaXmlImportPost().'
+            );
+        }
+
+        if (requestParameters['companyId'] == null) {
+            throw new runtime.RequiredError(
+                'companyId',
+                'Required parameter "companyId" was null or undefined when calling apiVversionCompanyIdFatturaElettronicaXmlImportPost().'
+            );
+        }
+
+        const queryParameters: any = {};
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+        if (this.configuration && this.configuration.accessToken) {
+            const token = this.configuration.accessToken;
+            const tokenString = await token("bearer", []);
+
+            if (tokenString) {
+                headerParameters["Authorization"] = `Bearer ${tokenString}`;
+            }
+        }
+        if (this.configuration && this.configuration.accessToken) {
+            // oauth required
+            headerParameters["Authorization"] = await this.configuration.accessToken("oauth2", []);
+        }
+
+        if (this.configuration && this.configuration.accessToken) {
+            // oauth required
+            headerParameters["Authorization"] = await this.configuration.accessToken("oauth2", []);
+        }
+
+        const consumes: runtime.Consume[] = [
+            { contentType: 'multipart/form-data' },
+        ];
+        // @ts-ignore: canConsumeForm may be unused
+        const canConsumeForm = runtime.canConsumeForm(consumes);
+
+        let formParams: { append(param: string, value: any): any };
+        let useForm = false;
+        // use FormData to transmit files using content-type "multipart/form-data"
+        useForm = canConsumeForm;
+        if (useForm) {
+            formParams = new FormData();
+        } else {
+            formParams = new URLSearchParams();
+        }
+
+        if (requestParameters['dataConsegnaSdi'] != null) {
+            formParams.append('DataConsegnaSdi', (requestParameters['dataConsegnaSdi'] as any).toISOString());
+        }
+
+        if (requestParameters['identificativoSdi'] != null) {
+            formParams.append('IdentificativoSdi', requestParameters['identificativoSdi'] as any);
+        }
+
+        if (requestParameters['file'] != null) {
+            formParams.append('file', requestParameters['file'] as any);
+        }
+
+        const response = await this.request({
+            path: `/api/v{version}/{companyId}/FatturaElettronicaXml/import`.replace(`{${"version"}}`, encodeURIComponent(String(requestParameters['version']))).replace(`{${"companyId"}}`, encodeURIComponent(String(requestParameters['companyId']))),
+            method: 'POST',
+            headers: headerParameters,
+            query: queryParameters,
+            body: formParams,
+        }, initOverrides);
+
+        return new runtime.JSONApiResponse(response, (jsonValue) => jsonValue.map(FatturaElettronicaImportResultFromJSON));
+    }
+
+    /**
+     * Viene creato un nuovo <a href=\"#tag/Documento\">Documento</a> corrispondente al contenuto XML.
+     * Importa una fattura XML.
+     */
+    async apiVversionCompanyIdFatturaElettronicaXmlImportPost(requestParameters: ApiVversionCompanyIdFatturaElettronicaXmlImportPostRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<Array<FatturaElettronicaImportResult>> {
+        const response = await this.apiVversionCompanyIdFatturaElettronicaXmlImportPostRaw(requestParameters, initOverrides);
+        return await response.value();
+    }
+
+    /**
+     * Restituisce una nuova istanza di un oggetto. Dove necessario, i valori delle proprietà saranno coerenti con lo stato e la logica dell\'applicazione (ad es., una nuova istanza di Amica.Documento avrà il Amica.Documento.Numero appropriato, basato sui documenti preesistenti di tipo compatibile).
+     */
+    async apiVversionCompanyIdFatturaElettronicaXmlNewGetRaw(requestParameters: ApiVversionCompanyIdFatturaElettronicaXmlNewGetRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<FatturaElettronicaXml>> {
+        if (requestParameters['version'] == null) {
+            throw new runtime.RequiredError(
+                'version',
+                'Required parameter "version" was null or undefined when calling apiVversionCompanyIdFatturaElettronicaXmlNewGet().'
+            );
+        }
+
+        if (requestParameters['companyId'] == null) {
+            throw new runtime.RequiredError(
+                'companyId',
+                'Required parameter "companyId" was null or undefined when calling apiVversionCompanyIdFatturaElettronicaXmlNewGet().'
+            );
+        }
+
+        const queryParameters: any = {};
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+        if (this.configuration && this.configuration.accessToken) {
+            const token = this.configuration.accessToken;
+            const tokenString = await token("bearer", []);
+
+            if (tokenString) {
+                headerParameters["Authorization"] = `Bearer ${tokenString}`;
+            }
+        }
+        if (this.configuration && this.configuration.accessToken) {
+            // oauth required
+            headerParameters["Authorization"] = await this.configuration.accessToken("oauth2", []);
+        }
+
+        if (this.configuration && this.configuration.accessToken) {
+            // oauth required
+            headerParameters["Authorization"] = await this.configuration.accessToken("oauth2", []);
+        }
+
+        const response = await this.request({
+            path: `/api/v{version}/{companyId}/FatturaElettronicaXml/new`.replace(`{${"version"}}`, encodeURIComponent(String(requestParameters['version']))).replace(`{${"companyId"}}`, encodeURIComponent(String(requestParameters['companyId']))),
+            method: 'GET',
+            headers: headerParameters,
+            query: queryParameters,
+        }, initOverrides);
+
+        return new runtime.JSONApiResponse(response, (jsonValue) => FatturaElettronicaXmlFromJSON(jsonValue));
+    }
+
+    /**
+     * Restituisce una nuova istanza di un oggetto. Dove necessario, i valori delle proprietà saranno coerenti con lo stato e la logica dell\'applicazione (ad es., una nuova istanza di Amica.Documento avrà il Amica.Documento.Numero appropriato, basato sui documenti preesistenti di tipo compatibile).
+     */
+    async apiVversionCompanyIdFatturaElettronicaXmlNewGet(requestParameters: ApiVversionCompanyIdFatturaElettronicaXmlNewGetRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<FatturaElettronicaXml> {
+        const response = await this.apiVversionCompanyIdFatturaElettronicaXmlNewGetRaw(requestParameters, initOverrides);
+        return await response.value();
+    }
+
+    /**
+     * Associa una fattura XML a un documento esistente.
+     */
+    async apiVversionCompanyIdFatturaElettronicaXmlPairPostRaw(requestParameters: ApiVversionCompanyIdFatturaElettronicaXmlPairPostRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<void>> {
+        if (requestParameters['version'] == null) {
+            throw new runtime.RequiredError(
+                'version',
+                'Required parameter "version" was null or undefined when calling apiVversionCompanyIdFatturaElettronicaXmlPairPost().'
+            );
+        }
+
+        if (requestParameters['companyId'] == null) {
+            throw new runtime.RequiredError(
+                'companyId',
+                'Required parameter "companyId" was null or undefined when calling apiVversionCompanyIdFatturaElettronicaXmlPairPost().'
+            );
+        }
+
+        const queryParameters: any = {};
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+        if (this.configuration && this.configuration.accessToken) {
+            const token = this.configuration.accessToken;
+            const tokenString = await token("bearer", []);
+
+            if (tokenString) {
+                headerParameters["Authorization"] = `Bearer ${tokenString}`;
+            }
+        }
+        if (this.configuration && this.configuration.accessToken) {
+            // oauth required
+            headerParameters["Authorization"] = await this.configuration.accessToken("oauth2", []);
+        }
+
+        if (this.configuration && this.configuration.accessToken) {
+            // oauth required
+            headerParameters["Authorization"] = await this.configuration.accessToken("oauth2", []);
+        }
+
+        const consumes: runtime.Consume[] = [
+            { contentType: 'multipart/form-data' },
+        ];
+        // @ts-ignore: canConsumeForm may be unused
+        const canConsumeForm = runtime.canConsumeForm(consumes);
+
+        let formParams: { append(param: string, value: any): any };
+        let useForm = false;
+        // use FormData to transmit files using content-type "multipart/form-data"
+        useForm = canConsumeForm;
+        if (useForm) {
+            formParams = new FormData();
+        } else {
+            formParams = new URLSearchParams();
+        }
+
+        if (requestParameters['fileName'] != null) {
+            formParams.append('FileName', requestParameters['fileName'] as any);
+        }
+
+        if (requestParameters['progressivo'] != null) {
+            formParams.append('Progressivo', requestParameters['progressivo'] as any);
+        }
+
+        if (requestParameters['documentoId'] != null) {
+            formParams.append('DocumentoId', requestParameters['documentoId'] as any);
+        }
+
+        if (requestParameters['file'] != null) {
+            formParams.append('file', requestParameters['file'] as any);
+        }
+
+        const response = await this.request({
+            path: `/api/v{version}/{companyId}/FatturaElettronicaXml/pair`.replace(`{${"version"}}`, encodeURIComponent(String(requestParameters['version']))).replace(`{${"companyId"}}`, encodeURIComponent(String(requestParameters['companyId']))),
+            method: 'POST',
+            headers: headerParameters,
+            query: queryParameters,
+            body: formParams,
+        }, initOverrides);
+
+        return new runtime.VoidApiResponse(response);
+    }
+
+    /**
+     * Associa una fattura XML a un documento esistente.
+     */
+    async apiVversionCompanyIdFatturaElettronicaXmlPairPost(requestParameters: ApiVversionCompanyIdFatturaElettronicaXmlPairPostRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<void> {
+        await this.apiVversionCompanyIdFatturaElettronicaXmlPairPostRaw(requestParameters, initOverrides);
+    }
+
+    /**
+     * Salva un nuovo elemento.
+     */
+    async apiVversionCompanyIdFatturaElettronicaXmlPostRaw(requestParameters: ApiVversionCompanyIdFatturaElettronicaXmlPostRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<FatturaElettronicaXml>> {
+        if (requestParameters['version'] == null) {
+            throw new runtime.RequiredError(
+                'version',
+                'Required parameter "version" was null or undefined when calling apiVversionCompanyIdFatturaElettronicaXmlPost().'
+            );
+        }
+
+        if (requestParameters['companyId'] == null) {
+            throw new runtime.RequiredError(
+                'companyId',
+                'Required parameter "companyId" was null or undefined when calling apiVversionCompanyIdFatturaElettronicaXmlPost().'
+            );
+        }
+
+        const queryParameters: any = {};
+
+        if (requestParameters['validationOverride'] != null) {
+            queryParameters['validationOverride'] = requestParameters['validationOverride'];
+        }
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+        headerParameters['Content-Type'] = 'application/json';
+
+        if (this.configuration && this.configuration.accessToken) {
+            const token = this.configuration.accessToken;
+            const tokenString = await token("bearer", []);
+
+            if (tokenString) {
+                headerParameters["Authorization"] = `Bearer ${tokenString}`;
+            }
+        }
+        if (this.configuration && this.configuration.accessToken) {
+            // oauth required
+            headerParameters["Authorization"] = await this.configuration.accessToken("oauth2", []);
+        }
+
+        if (this.configuration && this.configuration.accessToken) {
+            // oauth required
+            headerParameters["Authorization"] = await this.configuration.accessToken("oauth2", []);
+        }
+
+        const response = await this.request({
+            path: `/api/v{version}/{companyId}/FatturaElettronicaXml`.replace(`{${"version"}}`, encodeURIComponent(String(requestParameters['version']))).replace(`{${"companyId"}}`, encodeURIComponent(String(requestParameters['companyId']))),
+            method: 'POST',
+            headers: headerParameters,
+            query: queryParameters,
+            body: FatturaElettronicaXmlToJSON(requestParameters['fatturaElettronicaXml']),
+        }, initOverrides);
+
+        return new runtime.JSONApiResponse(response, (jsonValue) => FatturaElettronicaXmlFromJSON(jsonValue));
+    }
+
+    /**
+     * Salva un nuovo elemento.
+     */
+    async apiVversionCompanyIdFatturaElettronicaXmlPost(requestParameters: ApiVversionCompanyIdFatturaElettronicaXmlPostRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<FatturaElettronicaXml> {
+        const response = await this.apiVversionCompanyIdFatturaElettronicaXmlPostRaw(requestParameters, initOverrides);
+        return await response.value();
+    }
+
+    /**
+     * Interroga il Sistema di Interscambio (SDI) e scarica gli esiti di invio delle fatture precedentemente caricate.
+     */
+    async apiVversionCompanyIdFatturaElettronicaXmlSdiDownloadEsitiPostRaw(requestParameters: ApiVversionCompanyIdFatturaElettronicaXmlSdiDownloadEsitiPostRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<Array<FatturaElettronicaImportResult>>> {
+        if (requestParameters['version'] == null) {
+            throw new runtime.RequiredError(
+                'version',
+                'Required parameter "version" was null or undefined when calling apiVversionCompanyIdFatturaElettronicaXmlSdiDownloadEsitiPost().'
+            );
+        }
+
+        if (requestParameters['companyId'] == null) {
+            throw new runtime.RequiredError(
+                'companyId',
+                'Required parameter "companyId" was null or undefined when calling apiVversionCompanyIdFatturaElettronicaXmlSdiDownloadEsitiPost().'
+            );
+        }
+
+        const queryParameters: any = {};
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+        if (this.configuration && this.configuration.accessToken) {
+            const token = this.configuration.accessToken;
+            const tokenString = await token("bearer", []);
+
+            if (tokenString) {
+                headerParameters["Authorization"] = `Bearer ${tokenString}`;
+            }
+        }
+        if (this.configuration && this.configuration.accessToken) {
+            // oauth required
+            headerParameters["Authorization"] = await this.configuration.accessToken("oauth2", []);
+        }
+
+        if (this.configuration && this.configuration.accessToken) {
+            // oauth required
+            headerParameters["Authorization"] = await this.configuration.accessToken("oauth2", []);
+        }
+
+        const response = await this.request({
+            path: `/api/v{version}/{companyId}/FatturaElettronicaXml/sdi/download/esiti`.replace(`{${"version"}}`, encodeURIComponent(String(requestParameters['version']))).replace(`{${"companyId"}}`, encodeURIComponent(String(requestParameters['companyId']))),
+            method: 'POST',
+            headers: headerParameters,
+            query: queryParameters,
+        }, initOverrides);
+
+        return new runtime.JSONApiResponse(response, (jsonValue) => jsonValue.map(FatturaElettronicaImportResultFromJSON));
+    }
+
+    /**
+     * Interroga il Sistema di Interscambio (SDI) e scarica gli esiti di invio delle fatture precedentemente caricate.
+     */
+    async apiVversionCompanyIdFatturaElettronicaXmlSdiDownloadEsitiPost(requestParameters: ApiVversionCompanyIdFatturaElettronicaXmlSdiDownloadEsitiPostRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<Array<FatturaElettronicaImportResult>> {
+        const response = await this.apiVversionCompanyIdFatturaElettronicaXmlSdiDownloadEsitiPostRaw(requestParameters, initOverrides);
+        return await response.value();
+    }
+
+    /**
+     * Il <a href=\"https://gestionaleamica.com/Software/ServizioInterscambioFatture\">Servizio di Interscambio Documenti</a> deve essere attivo per l\'azienda e la relativa chiave di attivazione deve essere presente in !:ImpostazioniSdi.SdiApiKey.
+     * Scarica le nuove fatture dal Sistema di Interscambio (SDI).
+     */
+    async apiVversionCompanyIdFatturaElettronicaXmlSdiDownloadFatturePostRaw(requestParameters: ApiVversionCompanyIdFatturaElettronicaXmlSdiDownloadFatturePostRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<Array<FatturaElettronicaImportResult>>> {
+        if (requestParameters['version'] == null) {
+            throw new runtime.RequiredError(
+                'version',
+                'Required parameter "version" was null or undefined when calling apiVversionCompanyIdFatturaElettronicaXmlSdiDownloadFatturePost().'
+            );
+        }
+
+        if (requestParameters['companyId'] == null) {
+            throw new runtime.RequiredError(
+                'companyId',
+                'Required parameter "companyId" was null or undefined when calling apiVversionCompanyIdFatturaElettronicaXmlSdiDownloadFatturePost().'
+            );
+        }
+
+        const queryParameters: any = {};
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+        if (this.configuration && this.configuration.accessToken) {
+            const token = this.configuration.accessToken;
+            const tokenString = await token("bearer", []);
+
+            if (tokenString) {
+                headerParameters["Authorization"] = `Bearer ${tokenString}`;
+            }
+        }
+        if (this.configuration && this.configuration.accessToken) {
+            // oauth required
+            headerParameters["Authorization"] = await this.configuration.accessToken("oauth2", []);
+        }
+
+        if (this.configuration && this.configuration.accessToken) {
+            // oauth required
+            headerParameters["Authorization"] = await this.configuration.accessToken("oauth2", []);
+        }
+
+        const response = await this.request({
+            path: `/api/v{version}/{companyId}/FatturaElettronicaXml/sdi/download/fatture`.replace(`{${"version"}}`, encodeURIComponent(String(requestParameters['version']))).replace(`{${"companyId"}}`, encodeURIComponent(String(requestParameters['companyId']))),
+            method: 'POST',
+            headers: headerParameters,
+            query: queryParameters,
+        }, initOverrides);
+
+        return new runtime.JSONApiResponse(response, (jsonValue) => jsonValue.map(FatturaElettronicaImportResultFromJSON));
+    }
+
+    /**
+     * Il <a href=\"https://gestionaleamica.com/Software/ServizioInterscambioFatture\">Servizio di Interscambio Documenti</a> deve essere attivo per l\'azienda e la relativa chiave di attivazione deve essere presente in !:ImpostazioniSdi.SdiApiKey.
+     * Scarica le nuove fatture dal Sistema di Interscambio (SDI).
+     */
+    async apiVversionCompanyIdFatturaElettronicaXmlSdiDownloadFatturePost(requestParameters: ApiVversionCompanyIdFatturaElettronicaXmlSdiDownloadFatturePostRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<Array<FatturaElettronicaImportResult>> {
+        const response = await this.apiVversionCompanyIdFatturaElettronicaXmlSdiDownloadFatturePostRaw(requestParameters, initOverrides);
+        return await response.value();
+    }
+
+    /**
+     * Il <a href=\"https://gestionaleamica.com/Software/ServizioInterscambioFatture\">Servizio di Interscambio Documenti</a> deve essere attivo per l\'azienda e la relativa chiave di attivazione deve essere presente in !:ImpostazioniSdi.SdiApiKey.
+     * Invia una o più fatture al Sistema di Interscambio (SDI).
+     */
+    async apiVversionCompanyIdFatturaElettronicaXmlSdiUploadPostRaw(requestParameters: ApiVversionCompanyIdFatturaElettronicaXmlSdiUploadPostRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<FatturaElettronicaUploadResult>> {
+        if (requestParameters['version'] == null) {
+            throw new runtime.RequiredError(
+                'version',
+                'Required parameter "version" was null or undefined when calling apiVversionCompanyIdFatturaElettronicaXmlSdiUploadPost().'
+            );
+        }
+
+        if (requestParameters['companyId'] == null) {
+            throw new runtime.RequiredError(
+                'companyId',
+                'Required parameter "companyId" was null or undefined when calling apiVversionCompanyIdFatturaElettronicaXmlSdiUploadPost().'
+            );
+        }
+
+        const queryParameters: any = {};
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+        headerParameters['Content-Type'] = 'application/json';
+
+        if (this.configuration && this.configuration.accessToken) {
+            const token = this.configuration.accessToken;
+            const tokenString = await token("bearer", []);
+
+            if (tokenString) {
+                headerParameters["Authorization"] = `Bearer ${tokenString}`;
+            }
+        }
+        if (this.configuration && this.configuration.accessToken) {
+            // oauth required
+            headerParameters["Authorization"] = await this.configuration.accessToken("oauth2", []);
+        }
+
+        if (this.configuration && this.configuration.accessToken) {
+            // oauth required
+            headerParameters["Authorization"] = await this.configuration.accessToken("oauth2", []);
+        }
+
+        const response = await this.request({
+            path: `/api/v{version}/{companyId}/FatturaElettronicaXml/sdi/upload`.replace(`{${"version"}}`, encodeURIComponent(String(requestParameters['version']))).replace(`{${"companyId"}}`, encodeURIComponent(String(requestParameters['companyId']))),
+            method: 'POST',
+            headers: headerParameters,
+            query: queryParameters,
+            body: FatturaElettronicaUploadOptionsToJSON(requestParameters['fatturaElettronicaUploadOptions']),
+        }, initOverrides);
+
+        return new runtime.JSONApiResponse(response, (jsonValue) => FatturaElettronicaUploadResultFromJSON(jsonValue));
+    }
+
+    /**
+     * Il <a href=\"https://gestionaleamica.com/Software/ServizioInterscambioFatture\">Servizio di Interscambio Documenti</a> deve essere attivo per l\'azienda e la relativa chiave di attivazione deve essere presente in !:ImpostazioniSdi.SdiApiKey.
+     * Invia una o più fatture al Sistema di Interscambio (SDI).
+     */
+    async apiVversionCompanyIdFatturaElettronicaXmlSdiUploadPost(requestParameters: ApiVversionCompanyIdFatturaElettronicaXmlSdiUploadPostRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<FatturaElettronicaUploadResult> {
+        const response = await this.apiVversionCompanyIdFatturaElettronicaXmlSdiUploadPostRaw(requestParameters, initOverrides);
+        return await response.value();
+    }
+
+    /**
+     * Applica un foglio di stile CSS a una fattura XML esistente e restituisce il risultato.
+     */
+    async apiVversionCompanyIdFatturaElettronicaXmlStylesheetPostRaw(requestParameters: ApiVversionCompanyIdFatturaElettronicaXmlStylesheetPostRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<void>> {
+        if (requestParameters['version'] == null) {
+            throw new runtime.RequiredError(
+                'version',
+                'Required parameter "version" was null or undefined when calling apiVversionCompanyIdFatturaElettronicaXmlStylesheetPost().'
+            );
+        }
+
+        if (requestParameters['companyId'] == null) {
+            throw new runtime.RequiredError(
+                'companyId',
+                'Required parameter "companyId" was null or undefined when calling apiVversionCompanyIdFatturaElettronicaXmlStylesheetPost().'
+            );
+        }
+
+        const queryParameters: any = {};
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+        headerParameters['Content-Type'] = 'application/json';
+
+        if (this.configuration && this.configuration.accessToken) {
+            const token = this.configuration.accessToken;
+            const tokenString = await token("bearer", []);
+
+            if (tokenString) {
+                headerParameters["Authorization"] = `Bearer ${tokenString}`;
+            }
+        }
+        if (this.configuration && this.configuration.accessToken) {
+            // oauth required
+            headerParameters["Authorization"] = await this.configuration.accessToken("oauth2", []);
+        }
+
+        if (this.configuration && this.configuration.accessToken) {
+            // oauth required
+            headerParameters["Authorization"] = await this.configuration.accessToken("oauth2", []);
+        }
+
+        const response = await this.request({
+            path: `/api/v{version}/{companyId}/FatturaElettronicaXml/stylesheet`.replace(`{${"version"}}`, encodeURIComponent(String(requestParameters['version']))).replace(`{${"companyId"}}`, encodeURIComponent(String(requestParameters['companyId']))),
+            method: 'POST',
+            headers: headerParameters,
+            query: queryParameters,
+            body: FatturaElettronicaXmlStyleSheetDataToJSON(requestParameters['fatturaElettronicaXmlStyleSheetData']),
+        }, initOverrides);
+
+        return new runtime.VoidApiResponse(response);
+    }
+
+    /**
+     * Applica un foglio di stile CSS a una fattura XML esistente e restituisce il risultato.
+     */
+    async apiVversionCompanyIdFatturaElettronicaXmlStylesheetPost(requestParameters: ApiVversionCompanyIdFatturaElettronicaXmlStylesheetPostRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<void> {
+        await this.apiVversionCompanyIdFatturaElettronicaXmlStylesheetPostRaw(requestParameters, initOverrides);
+    }
+
+}

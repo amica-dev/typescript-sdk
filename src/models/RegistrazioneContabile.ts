@@ -1,0 +1,301 @@
+/* tslint:disable */
+/* eslint-disable */
+/**
+ * Customers API
+ * La Customers API fornisce accesso programmatico a tutti i dati aziendali gestiti da [Amica 20](https://gestionaleamica.com). Supporta il ciclo completo di documenti, fatture, magazzino, contabilità e anagrafiche. Per guide e documentazione completa, visitare [amica.dev](https://amica.dev/).  ## Autenticazione  Tutte le richieste API richiedono un token OAuth 2.0 Bearer valido, da includere nell\'header `Authorization`:  ``` Authorization: Bearer <token> ```  ### Registra la tua app  Per integrare la Customers API registra la tua applicazione sull\'**App Store di Amica**. Al termine della registrazione ottieni una coppia di credenziali OAuth 2.0 — `client_id` e `client_secret` (il secret è mostrato **una sola volta**) — e scegli gli **scope** e il **flusso di autenticazione** desiderati.  ### Scegli il flusso  - **Authorization Code con PKCE** (consigliato per app che operano per conto di un utente Amica): l\'utente autorizza la tua app tramite la pagina di consenso dell\'identity provider; la tua app riceve un `code` da scambiare con un access token.    ```   GET  {identity-provider}/connect/authorize?response_type=code&client_id=<client_id>&redirect_uri=<redirect_uri>&scope=openid%20read%20write%20documenti&code_challenge=<challenge>&code_challenge_method=S256   POST {identity-provider}/connect/token        grant_type=authorization_code&code=<code>&code_verifier=<verifier>&client_id=<client_id>&client_secret=<client_secret>&redirect_uri=<redirect_uri>   ```  - **Client Credentials** (per integrazioni server-to-server, senza utente interattivo):    ```   POST {identity-provider}/connect/token   Content-Type: application/x-www-form-urlencoded    grant_type=client_credentials&client_id=<client_id>&client_secret=<client_secret>&scope=read write documenti contabilita   ```    > **Nota:** il flusso Client Credentials è disponibile solo per le **app private**, non per quelle pubblicate sul marketplace.  In entrambi i casi la risposta contiene l\'`access_token` (JWT con `aud: amica-cloud`) da usare nelle chiamate successive finché non scade (`expires_in`), dopodiché va richiesto un nuovo token. Ogni token contiene uno o più **scope** che determinano le aree accessibili (vedi sotto). Dalla [API Reference](https://amica.dev) è possibile incollare un access token per provare gli endpoint direttamente dal browser.  ## Scope di autorizzazione  L\'accesso agli endpoint è governato dagli scope presenti nel token OAuth:  | Scope | Descrizione | |-------|-------------| | `comune` | Anagrafiche: contatti, indirizzi, nazioni, valute, modalità di pagamento, ecc. | | `magazzino` | Magazzino: articoli, listini, movimenti di magazzino, giacenze, distinte base. | | `contabilita` | Contabilità: registrazioni contabili, scadenze, castelletti IVA, fatture elettroniche XML. | | `documenti` | Documenti: fatture, note di credito, DDT, ordini, preventivi, proforma ed emissione. |  Una richiesta verso un endpoint non coperto dallo scope del token riceverà una risposta `403 Forbidden`.  ## Company ID  La maggior parte degli endpoint è relativa a una specifica azienda e segue il pattern:  ``` /api/v3/{companyId}/risorsa ```  Il `companyId` è l\'identificativo univoco di ciascun database aziendale. Usare l\'endpoint `GET /api/v3/config/Azienda` per ottenere l\'elenco delle aziende disponibili.  ## Paginazione  Gli endpoint che restituiscono liste supportano la paginazione tramite query parameter:  | Parametro | Descrizione | |-----------|-------------| | `Skip` | Numero di elementi da saltare dall\'inizio del set di risultati. | | `Take` | Numero di elementi da includere nella risposta. |  La risposta include due header:  | Header | Descrizione | |--------|-------------| | `X-Read-TotalCount` | Numero totale di elementi che soddisfano il filtro corrente. | | `X-Read-Count` | Numero di elementi effettivamente restituiti nel body della risposta. |  ## Ordinamento e filtri  Gli endpoint lista accettano parametri aggiuntivi:  | Parametro | Descrizione | |-----------|-------------| | `Order` | Lista di proprietà per l\'ordinamento, separate da virgola. Un segno meno (`-`) prima del nome indica ordine discendente. Es. `-RagioneSociale1,Citta`. | | `Filter` | Condizioni di ricerca: lista di espressioni separate da virgola, ciascuna formata da nome campo, operatore, valore ed eventuale connettore logico. Operatori: `$eq`, `$ne`, `$gt`, `$lt`, `$lte`, `$gte`, `$ct` (contiene), `$nct`, `$sw` (inizia con), `$ew` (finisce con). Connettori: `$and` (default, omissibile) e `$or`; le sotto-query si racchiudono tra `[]`. Es. `RagioneSociale1 $ct acme $or, Fido $gt 1000`. | | `SkipTotalCount` | Se `true`, l\'header `X-Read-TotalCount` viene omesso dalla risposta: migliori prestazioni a scapito del conteggio totale. Default `false`. |  ## Espansione oggetti correlati  Gli endpoint singoli e lista supportano il parametro `Expand`. Quando fornito, gli oggetti correlati vengono inclusi inline nella risposta anziché restituiti come riferimenti. È possibile specificare espansioni multiple separate da virgola.  ## Gestione errori  L\'API usa codici di stato HTTP standard e restituisce [RFC 7807](https://tools.ietf.org/html/rfc7807) Problem Details in caso di errore:  | Codice | Significato | |--------|-------------| | `400` | Bad Request — validazione fallita o parametro obbligatorio mancante. | | `401` | Unauthorized — token mancante o scaduto. | | `403` | Forbidden — il token non possiede lo scope richiesto. | | `404` | Not Found — la risorsa richiesta non esiste. | | `409` | Conflict — conflitto di concorrenza. | | `422` | Unprocessable Entity — entità non processabile (es. token di concorrenza obsoleto). |  Alcune risposte `400` includono un campo `overridable` che indica se l\'errore di validazione può essere ignorato impostando il parametro `validationOverride` a `true`.  ## Controllo della concorrenza  Le entità contengono una proprietà `ConcurrencyToken`. Quando si aggiorna un\'entità tramite `PUT`, il token nel body della richiesta viene confrontato con il valore memorizzato. Se differiscono, viene restituito un `422 Unprocessable Entity`. Usare sempre l\'ultimo token ricevuto da una risposta `GET` o `POST`. 
+ *
+ * The version of the OpenAPI document: v3
+ * Contact: assistenza@gestionaleamica.com
+ *
+ * NOTE: This class is auto generated by OpenAPI Generator (https://openapi-generator.tech).
+ * https://openapi-generator.tech
+ * Do not edit the class manually.
+ */
+
+import { mapValues } from '../runtime';
+import type { CastellettoIva } from './CastellettoIva';
+import {
+    CastellettoIvaFromJSON,
+    CastellettoIvaFromJSONTyped,
+    CastellettoIvaToJSON,
+    CastellettoIvaToJSONTyped,
+} from './CastellettoIva';
+import type { Scadenza } from './Scadenza';
+import {
+    ScadenzaFromJSON,
+    ScadenzaFromJSONTyped,
+    ScadenzaToJSON,
+    ScadenzaToJSONTyped,
+} from './Scadenza';
+import type { RegistrazioneContabileRiga } from './RegistrazioneContabileRiga';
+import {
+    RegistrazioneContabileRigaFromJSON,
+    RegistrazioneContabileRigaFromJSONTyped,
+    RegistrazioneContabileRigaToJSON,
+    RegistrazioneContabileRigaToJSONTyped,
+} from './RegistrazioneContabileRiga';
+import type { Documento } from './Documento';
+import {
+    DocumentoFromJSON,
+    DocumentoFromJSONTyped,
+    DocumentoToJSON,
+    DocumentoToJSONTyped,
+} from './Documento';
+
+/**
+ * Registrazione contabile.
+ * @export
+ * @interface RegistrazioneContabile
+ */
+export interface RegistrazioneContabile {
+    /**
+     * Identificativo univoco.
+     * @type {number}
+     * @memberof RegistrazioneContabile
+     */
+    id?: number;
+    /**
+     * Il token di concorrenza implementa il controllo di concorrenza ottimistica: a ogni operazione di aggiornamento o cancellazione il valore del token sul database viene confrontato con quello sull'entità. Se i valori coincidono, l'operazione viene eseguita; se differiscono, si assume che un altro utente abbia effettuato una scrittura nel frattempo e l'aggiornamento viene rifiutato.
+     * @type {number}
+     * @memberof RegistrazioneContabile
+     */
+    concurrencyToken?: number;
+    /**
+     * Data della registrazione contabile.
+     * @type {Date}
+     * @memberof RegistrazioneContabile
+     */
+    data?: Date;
+    /**
+     * Data di competenza.
+     * @type {Date}
+     * @memberof RegistrazioneContabile
+     */
+    dataCompetenza?: Date | null;
+    /**
+     * Numero della registrazione contabile.
+     * @type {number}
+     * @memberof RegistrazioneContabile
+     */
+    numero?: number;
+    /**
+     * Tipo di registrazione.
+     * @type {string}
+     * @memberof RegistrazioneContabile
+     */
+    tipoRegistrazione?: RegistrazioneContabileTipoRegistrazioneEnum;
+    /**
+     * Positività o negatività dell'IVA.
+     * @type {string}
+     * @memberof RegistrazioneContabile
+     */
+    segnoIva?: RegistrazioneContabileSegnoIvaEnum;
+    /**
+     * Tipo di operazione contabile.
+     * @type {string}
+     * @memberof RegistrazioneContabile
+     */
+    tipoOperazione?: RegistrazioneContabileTipoOperazioneEnum;
+    /**
+     * Identificativo univoco di `RegistroIva`.
+     * @type {number}
+     * @memberof RegistrazioneContabile
+     */
+    registroIvaId?: number | null;
+    /**
+     * Identificativo univoco di Amica.Anagrafica.
+     * @type {number}
+     * @memberof RegistrazioneContabile
+     */
+    anagraficaId?: number | null;
+    /**
+     * Identificativo univoco di Amica.Pagamento.
+     * @type {number}
+     * @memberof RegistrazioneContabile
+     */
+    pagamentoId?: number | null;
+    /**
+     * Identificativo univoco di Amica.RegistrazioneContabile.Documento.
+     * @type {number}
+     * @memberof RegistrazioneContabile
+     */
+    documentoId?: number | null;
+    /**
+     * 
+     * @type {Documento}
+     * @memberof RegistrazioneContabile
+     */
+    documento?: Documento;
+    /**
+     * Data del documento di riferimento.
+     * @type {Date}
+     * @memberof RegistrazioneContabile
+     */
+    dataDocumento?: Date | null;
+    /**
+     * La parte alfanumerica del numero documento, se presente (es. "bis").
+     * @type {string}
+     * @memberof RegistrazioneContabile
+     */
+    documentoNumeroParteTesto?: string | null;
+    /**
+     * La parte numerica del numero documento (es. "99").
+     * @type {number}
+     * @memberof RegistrazioneContabile
+     */
+    documentoNumeroParteNumerica?: number | null;
+    /**
+     * Numero documento completo, es. "99/bis". Il documento deve essere già stato salvato sul backend.
+     * @type {string}
+     * @memberof RegistrazioneContabile
+     */
+    documentoNumero?: string | null;
+    /**
+     * Numero di protocollo.
+     * @type {number}
+     * @memberof RegistrazioneContabile
+     */
+    protocollo?: number | null;
+    /**
+     * Descrizione.
+     * @type {string}
+     * @memberof RegistrazioneContabile
+     */
+    descrizione?: string | null;
+    /**
+     * Note.
+     * @type {string}
+     * @memberof RegistrazioneContabile
+     */
+    note?: string | null;
+    /**
+     * Righe della registrazione contabile.
+     * @type {Array<RegistrazioneContabileRiga>}
+     * @memberof RegistrazioneContabile
+     */
+    righe?: Array<RegistrazioneContabileRiga> | null;
+    /**
+     * Importo IVA da versare.
+     * @type {Array<CastellettoIva>}
+     * @memberof RegistrazioneContabile
+     */
+    castellettoIva?: Array<CastellettoIva> | null;
+    /**
+     * Scadenze.
+     * @type {Array<Scadenza>}
+     * @memberof RegistrazioneContabile
+     */
+    scadenze?: Array<Scadenza> | null;
+}
+
+
+/**
+ * @export
+ */
+export const RegistrazioneContabileTipoRegistrazioneEnum = {
+    Acquisto: 'Acquisto',
+    Vendita: 'Vendita',
+    Contabile: 'Contabile'
+} as const;
+export type RegistrazioneContabileTipoRegistrazioneEnum = typeof RegistrazioneContabileTipoRegistrazioneEnum[keyof typeof RegistrazioneContabileTipoRegistrazioneEnum];
+
+/**
+ * @export
+ */
+export const RegistrazioneContabileSegnoIvaEnum = {
+    Positivo: 'Positivo',
+    Negativo: 'Negativo'
+} as const;
+export type RegistrazioneContabileSegnoIvaEnum = typeof RegistrazioneContabileSegnoIvaEnum[keyof typeof RegistrazioneContabileSegnoIvaEnum];
+
+/**
+ * @export
+ */
+export const RegistrazioneContabileTipoOperazioneEnum = {
+    Apertura: 'Apertura',
+    Chiusura: 'Chiusura',
+    Normale: 'Normale'
+} as const;
+export type RegistrazioneContabileTipoOperazioneEnum = typeof RegistrazioneContabileTipoOperazioneEnum[keyof typeof RegistrazioneContabileTipoOperazioneEnum];
+
+
+/**
+ * Check if a given object implements the RegistrazioneContabile interface.
+ */
+export function instanceOfRegistrazioneContabile(value: object): value is RegistrazioneContabile {
+    return true;
+}
+
+export function RegistrazioneContabileFromJSON(json: any): RegistrazioneContabile {
+    return RegistrazioneContabileFromJSONTyped(json, false);
+}
+
+export function RegistrazioneContabileFromJSONTyped(json: any, ignoreDiscriminator: boolean): RegistrazioneContabile {
+    if (json == null) {
+        return json;
+    }
+    return {
+        
+        'id': json['id'] == null ? undefined : json['id'],
+        'concurrencyToken': json['concurrencyToken'] == null ? undefined : json['concurrencyToken'],
+        'data': json['data'] == null ? undefined : (new Date(json['data'])),
+        'dataCompetenza': json['dataCompetenza'] == null ? undefined : (new Date(json['dataCompetenza'])),
+        'numero': json['numero'] == null ? undefined : json['numero'],
+        'tipoRegistrazione': json['tipoRegistrazione'] == null ? undefined : json['tipoRegistrazione'],
+        'segnoIva': json['segnoIva'] == null ? undefined : json['segnoIva'],
+        'tipoOperazione': json['tipoOperazione'] == null ? undefined : json['tipoOperazione'],
+        'registroIvaId': json['registroIvaId'] == null ? undefined : json['registroIvaId'],
+        'anagraficaId': json['anagraficaId'] == null ? undefined : json['anagraficaId'],
+        'pagamentoId': json['pagamentoId'] == null ? undefined : json['pagamentoId'],
+        'documentoId': json['documentoId'] == null ? undefined : json['documentoId'],
+        'documento': json['documento'] == null ? undefined : DocumentoFromJSON(json['documento']),
+        'dataDocumento': json['dataDocumento'] == null ? undefined : (new Date(json['dataDocumento'])),
+        'documentoNumeroParteTesto': json['documentoNumeroParteTesto'] == null ? undefined : json['documentoNumeroParteTesto'],
+        'documentoNumeroParteNumerica': json['documentoNumeroParteNumerica'] == null ? undefined : json['documentoNumeroParteNumerica'],
+        'documentoNumero': json['documentoNumero'] == null ? undefined : json['documentoNumero'],
+        'protocollo': json['protocollo'] == null ? undefined : json['protocollo'],
+        'descrizione': json['descrizione'] == null ? undefined : json['descrizione'],
+        'note': json['note'] == null ? undefined : json['note'],
+        'righe': json['righe'] == null ? undefined : ((json['righe'] as Array<any>).map(RegistrazioneContabileRigaFromJSON)),
+        'castellettoIva': json['castellettoIva'] == null ? undefined : ((json['castellettoIva'] as Array<any>).map(CastellettoIvaFromJSON)),
+        'scadenze': json['scadenze'] == null ? undefined : ((json['scadenze'] as Array<any>).map(ScadenzaFromJSON)),
+    };
+}
+
+export function RegistrazioneContabileToJSON(json: any): RegistrazioneContabile {
+    return RegistrazioneContabileToJSONTyped(json, false);
+}
+
+export function RegistrazioneContabileToJSONTyped(value?: RegistrazioneContabile | null, ignoreDiscriminator: boolean = false): any {
+    if (value == null) {
+        return value;
+    }
+
+    return {
+        
+        'id': value['id'],
+        'concurrencyToken': value['concurrencyToken'],
+        'data': value['data'] == null ? undefined : ((value['data']).toISOString()),
+        'dataCompetenza': value['dataCompetenza'] == null ? undefined : ((value['dataCompetenza'] as any).toISOString()),
+        'numero': value['numero'],
+        'tipoRegistrazione': value['tipoRegistrazione'],
+        'segnoIva': value['segnoIva'],
+        'tipoOperazione': value['tipoOperazione'],
+        'registroIvaId': value['registroIvaId'],
+        'anagraficaId': value['anagraficaId'],
+        'pagamentoId': value['pagamentoId'],
+        'documentoId': value['documentoId'],
+        'documento': DocumentoToJSON(value['documento']),
+        'dataDocumento': value['dataDocumento'] == null ? undefined : ((value['dataDocumento'] as any).toISOString()),
+        'documentoNumeroParteTesto': value['documentoNumeroParteTesto'],
+        'documentoNumeroParteNumerica': value['documentoNumeroParteNumerica'],
+        'documentoNumero': value['documentoNumero'],
+        'protocollo': value['protocollo'],
+        'descrizione': value['descrizione'],
+        'note': value['note'],
+        'righe': value['righe'] == null ? undefined : ((value['righe'] as Array<any>).map(RegistrazioneContabileRigaToJSON)),
+        'castellettoIva': value['castellettoIva'] == null ? undefined : ((value['castellettoIva'] as Array<any>).map(CastellettoIvaToJSON)),
+        'scadenze': value['scadenze'] == null ? undefined : ((value['scadenze'] as Array<any>).map(ScadenzaToJSON)),
+    };
+}
+
