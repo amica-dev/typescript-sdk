@@ -1,7 +1,7 @@
 {
-  "name": "@cir2000/amica-sdk",
+  "name": "@amica/typescript-sdk",
   "version": "v3",
-  "description": "OpenAPI client for @cir2000/amica-sdk",
+  "description": "OpenAPI client for @amica/typescript-sdk",
   "author": "OpenAPI-Generator",
   "repository": {
     "type": "git",

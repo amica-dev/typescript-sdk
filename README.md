@@ -1,4 +1,4 @@
-# @cir2000/amica-sdk — SDK TypeScript per la Customers API di Amica
+# @amica/typescript-sdk — SDK TypeScript per la Customers API di Amica
 
 La Customers API fornisce accesso programmatico a tutti i dati aziendali gestiti da [Amica 20](https://gestionaleamica.com). Supporta il ciclo completo di documenti, fatture, magazzino, contabilità e anagrafiche. Per guide e documentazione completa, visitare [amica.dev](https://amica.dev/).
 
@@ -115,13 +115,13 @@ Le entità contengono una proprietà `ConcurrencyToken`. Quando si aggiorna un'e
 Il client è basato su [`fetch`](https://developer.mozilla.org/docs/Web/API/Fetch_API) e funziona in Node.js, nel browser e con i bundler. Installa direttamente dal repository:
 
 ```bash
-npm install github:CIR2000/amica-typescript
+npm install github:amica-dev/typescript-sdk
 ```
 
 ## Per iniziare
 
 ```typescript
-import { Configuration, AziendaApi } from "@cir2000/amica-sdk";
+import { Configuration, AziendaApi } from "@amica/typescript-sdk";
 
 const config = new Configuration({
   basePath: "https://customerws1.amica20.it",

@@ -21,7 +21,6 @@ src/apis/ContoContabileApi.ts
 src/apis/DistintaBaseApi.ts
 src/apis/DocumentoApi.ts
 src/apis/DocumentoMediaFileApi.ts
-src/apis/EventoApi.ts
 src/apis/FatturaElettronicaXmlApi.ts
 src/apis/FatturaElettronicaXmlTemplateApi.ts
 src/apis/GiacenzaApi.ts
@@ -51,7 +50,6 @@ src/apis/SpesaApi.ts
 src/apis/SpesaDocumentoApi.ts
 src/apis/TagliaApi.ts
 src/apis/ValutaApi.ts
-src/apis/WebHookApi.ts
 src/apis/index.ts
 src/index.ts
 src/models/AllegatoDocumento.ts
@@ -96,7 +94,6 @@ src/models/DocumentoComputeResult.ts
 src/models/DocumentoComputeResultRiepilogoIva.ts
 src/models/DocumentoImportData.ts
 src/models/DocumentoMediaFile.ts
-src/models/Evento.ts
 src/models/FatturaElettronicaExportOptions.ts
 src/models/FatturaElettronicaExportResult.ts
 src/models/FatturaElettronicaImportResult.ts
@@ -148,7 +145,6 @@ src/models/Spesa.ts
 src/models/SpesaDocumento.ts
 src/models/Taglia.ts
 src/models/Valuta.ts
-src/models/WebHook.ts
 src/models/index.ts
 src/runtime.ts
 tsconfig.esm.json
