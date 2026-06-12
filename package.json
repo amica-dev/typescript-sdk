@@ -1,12 +1,13 @@
 {
   "name": "@amica/typescript-sdk",
-  "version": "v3",
+  "version": "0.0.0-dev",
   "description": "OpenAPI client for @amica/typescript-sdk",
   "author": "OpenAPI-Generator",
   "repository": {
     "type": "git",
     "url": "https://github.com/amica-dev/typescript-sdk.git"
   },
+  "license": "MIT",
   "main": "./dist/index.js",
   "typings": "./dist/index.d.ts",
   "module": "./dist/esm/index.js",
