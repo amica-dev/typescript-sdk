@@ -1,6 +1,6 @@
 {
   "name": "@amica/typescript-sdk",
-  "version": "0.0.0-dev",
+  "version": "3.0.0-beta4",
   "description": "OpenAPI client for @amica/typescript-sdk",
   "author": "OpenAPI-Generator",
   "repository": {
