@@ -21,10 +21,10 @@ import { mapValues } from '../runtime';
 export interface DistinctPropertyGroup {
     /**
      * Chiave di distinzione (es.: "RagioneSociale1").
-     * @type {any}
+     * @type {string}
      * @memberof DistinctPropertyGroup
      */
-    key?: any | null;
+    key?: DistinctPropertyGroupKeyEnum | null;
     /**
      * Valori distinti trovati per la chiave indicata.
      * @type {Array<DistinctPropertyGroup>}
@@ -32,6 +32,15 @@ export interface DistinctPropertyGroup {
      */
     items?: Array<DistinctPropertyGroup> | null;
 }
+
+
+/**
+ * @export
+ */
+export const DistinctPropertyGroupKeyEnum = {
+} as const;
+export type DistinctPropertyGroupKeyEnum = typeof DistinctPropertyGroupKeyEnum[keyof typeof DistinctPropertyGroupKeyEnum];
+
 
 /**
  * Check if a given object implements the DistinctPropertyGroup interface.
