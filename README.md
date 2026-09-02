@@ -112,7 +112,7 @@ L'API usa codici di stato HTTP standard e restituisce [RFC 7807](https://tools.i
 | `409` | Conflict — conflitto di concorrenza. |
 | `422` | Unprocessable Entity — entità non processabile (es. token di concorrenza obsoleto). |
 
-Alcune risposte `400` includono un campo `overridable` che indica se l'errore di validazione può essere ignorato impostando il parametro `validationOverride` a `true`.
+Il motivo dell'errore è sempre nel campo `detail`. Ogni risposta di errore riporta inoltre `overridable`: quando vale `true`, l'errore di validazione è *forzabile* e basta ripetere la stessa richiesta aggiungendo `validationOverride=true` alla query string perché il servizio la accetti. È il caso delle anomalie formali su dati reali — la partita IVA di un fornitore estero, per esempio — che il cliente ha comunque bisogno di registrare.
 
 ## Controllo della concorrenza
 
@@ -157,4 +157,4 @@ try {
 
 ---
 
-SDK generato automaticamente con [OpenAPI Generator](https://openapi-generator.tech) — API `v3`, SDK `3.0.0`, generator `7.11.0`.
+SDK generato automaticamente con [OpenAPI Generator](https://openapi-generator.tech) — API `3.0.1`, SDK `3.0.1`, generator `7.11.0`.
