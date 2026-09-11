@@ -107,10 +107,16 @@ L'API usa codici di stato HTTP standard e restituisce [RFC 7807](https://tools.i
 |-|-|
 | `400` | Bad Request — validazione fallita o parametro obbligatorio mancante. |
 | `401` | Unauthorized — token mancante o scaduto. |
-| `403` | Forbidden — il token non possiede lo scope richiesto. |
+| `403` | Forbidden — accesso negato (vedi sotto le possibili cause). |
 | `404` | Not Found — la risorsa richiesta non esiste. |
 | `409` | Conflict — conflitto di concorrenza. |
 | `422` | Unprocessable Entity — entità non processabile (es. token di concorrenza obsoleto). |
+
+Un `403` può avere tre cause; nelle ultime due il campo `code` della risposta indica quale:
+
+- il token non possiede lo scope richiesto dall'endpoint;
+- `code: cloud_not_active` — l'account lavora con una connessione locale e la Cloud API non espone i suoi dati. Per attivare il servizio cloud contatta l'assistenza, poi richiedi un nuovo token: lo stato del servizio è letto al rilascio del token;
+- `code: company_license_not_active` — la licenza dell'azienda indicata nel percorso è scaduta o non è attiva. Le altre aziende con licenza attiva restano accessibili.
 
 Il motivo dell'errore è sempre nel campo `detail`. Ogni risposta di errore riporta inoltre `overridable`: quando vale `true`, l'errore di validazione è *forzabile* e basta ripetere la stessa richiesta aggiungendo `validationOverride=true` alla query string perché il servizio la accetti. È il caso delle anomalie formali su dati reali — la partita IVA di un fornitore estero, per esempio — che il cliente ha comunque bisogno di registrare.
 
@@ -157,4 +163,4 @@ try {
 
 ---
 
-SDK generato automaticamente con [OpenAPI Generator](https://openapi-generator.tech) — API `3.0.1`, SDK `3.0.1`, generator `7.11.0`.
+SDK generato automaticamente con [OpenAPI Generator](https://openapi-generator.tech) — API `3.0.2`, SDK `3.0.2`, generator `7.11.0`.
