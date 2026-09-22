@@ -163,4 +163,4 @@ try {
 
 ---
 
-SDK generato automaticamente con [OpenAPI Generator](https://openapi-generator.tech) — API `3.0.2`, SDK `3.0.2`, generator `7.11.0`.
+SDK generato automaticamente con [OpenAPI Generator](https://openapi-generator.tech) — API `3.1.0`, SDK `3.1.0`, generator `7.11.0`.

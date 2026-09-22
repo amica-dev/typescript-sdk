@@ -4,7 +4,7 @@
  * Amica Cloud API
  * L\'Amica Cloud API fornisce accesso programmatico a tutti i dati aziendali gestiti da [Amica 20](https://gestionaleamica.com). Supporta il ciclo completo di documenti, fatture, magazzino, contabilità e anagrafiche. Per guide e documentazione completa, visitare [amica.dev](https://amica.dev/).  ## Autenticazione  Tutte le richieste API richiedono un token OAuth 2.0 Bearer valido, da includere nell\'header `Authorization`:  ``` Authorization: Bearer <token> ```  ### Registra la tua app  Per integrare l\'Amica Cloud API registra la tua applicazione sull\'[**App Store di Amica**](https://apps.amica20.it). Al termine della registrazione ottieni una coppia di credenziali OAuth 2.0 — `client_id` e `client_secret` (il secret è mostrato **una sola volta**) — e scegli gli **scope** e il **flusso di autenticazione** desiderati.  ### Scegli il flusso  La scelta dipende da **come** la tua applicazione si autentica:  - C\'è un **utente** che può accedere via browser (web app, SPA, app mobile)? → **Authorization Code con PKCE**. - È un **servizio headless** (backend, batch, integrazione server-to-server) di una **singola azienda**, senza un utente che effettua il login? → **Client Credentials**.  #### Authorization Code con PKCE  Consigliato per le app che operano per conto di un utente Amica ed è l\'**unico flusso disponibile per le app pubblicate sul marketplace**. Una sola registrazione serve un numero qualsiasi di aziende: ogni utente autorizza la tua app per la propria azienda tramite la pagina di consenso dell\'identity provider, e il token riceve automaticamente il contesto di quell\'azienda. La tua app riceve un `code` da scambiare con un access token.  ``` GET  {identity-provider}/connect/authorize?response_type=code&client_id=<client_id>&redirect_uri=<redirect_uri>&scope=openid%20read%20write%20documenti&code_challenge=<challenge>&code_challenge_method=S256 POST {identity-provider}/connect/token      grant_type=authorization_code&code=<code>&code_verifier=<verifier>&client_id=<client_id>&client_secret=<client_secret>&redirect_uri=<redirect_uri> ```  #### Client Credentials  Per integrazioni **server-to-server** senza utente interattivo. Disponibile solo per le **app private**, non per quelle pubblicate sul marketplace. Un\'app Client Credentials è **legata a una singola azienda** — quella dell\'utente che la registra — e il token ne riceve automaticamente il contesto. Per servire un\'azienda diversa serve una registrazione separata; se devi distribuire la stessa app a più aziende usa invece **Authorization Code**.  ``` POST {identity-provider}/connect/token Content-Type: application/x-www-form-urlencoded  grant_type=client_credentials&client_id=<client_id>&client_secret=<client_secret>&scope=comune read write documenti ```  > **Importante:** non includere lo scope `openid` (né `profile`/`email`) in questo flusso. `openid` attiva OpenID Connect — richiede un utente che effettua il login e l\'emissione di un ID token — cosa che un flusso server-to-server non prevede: la richiesta viene rifiutata con l\'errore `Client cannot request OpenID scopes in client credentials flow`. Indica solo gli scope di risorsa (`comune`, `magazzino`, `documenti`, `contabilita`, ed eventualmente `read`/`write`).  In entrambi i casi la risposta contiene l\'`access_token` (JWT con `aud: amica-cloud`) da usare nelle chiamate successive finché non scade (`expires_in`), dopodiché va richiesto un nuovo token. Ogni token contiene uno o più **scope** che determinano le aree accessibili (vedi sotto). Dalla [API Reference](https://amica.dev) è possibile incollare un access token per provare gli endpoint direttamente dal browser.  ## Scope di autorizzazione  L\'accesso agli endpoint è governato dagli scope presenti nel token OAuth:  | Scope | Descrizione | |-|-| | `comune` | Anagrafiche: contatti, indirizzi, nazioni, valute, modalità di pagamento, ecc. | | `magazzino` | Magazzino: articoli, listini, movimenti di magazzino, giacenze, distinte base. | | `contabilita` | Contabilità: registrazioni contabili, scadenze, castelletti IVA, fatture elettroniche XML. | | `documenti` | Documenti: fatture, note di credito, DDT, ordini, preventivi, proforma ed emissione. |  Una richiesta verso un endpoint non coperto dallo scope del token riceverà una risposta `403 Forbidden`.  ## Company ID  La maggior parte degli endpoint è relativa a una specifica azienda e segue il pattern:  ``` /api/v3/{companyId}/risorsa ```  Il `companyId` è l\'identificativo univoco di ciascun database aziendale. Usare l\'endpoint `GET /api/v3/config/Azienda` per ottenere l\'elenco delle aziende disponibili.  ## Paginazione  Gli endpoint che restituiscono liste supportano la paginazione tramite query parameter:  | Parametro | Descrizione | |-|-| | `Skip` | Numero di elementi da saltare dall\'inizio del set di risultati. | | `Take` | Numero di elementi da includere nella risposta. |  La risposta include due header:  | Header | Descrizione | |-|-| | `X-Read-TotalCount` | Numero totale di elementi che soddisfano il filtro corrente. | | `X-Read-Count` | Numero di elementi effettivamente restituiti nel body della risposta. |  ## Ordinamento e filtri  Gli endpoint lista accettano parametri aggiuntivi:  | Parametro | Descrizione | |-|-| | `Order` | Lista di proprietà per l\'ordinamento, separate da virgola. Un segno meno (`-`) prima del nome indica ordine discendente. Es. `-RagioneSociale1,Citta`. | | `Filter` | Condizioni di ricerca: lista di espressioni separate da virgola, ciascuna formata da nome campo, operatore, valore ed eventuale connettore logico. Operatori: `$eq`, `$ne`, `$gt`, `$lt`, `$lte`, `$gte`, `$ct` (contiene), `$nct`, `$sw` (inizia con), `$ew` (finisce con). Connettori: `$and` (default, omissibile) e `$or`; le sotto-query si racchiudono tra `[]`. Es. `RagioneSociale1 $ct acme $or, Fido $gt 1000`. | | `SkipTotalCount` | Se `true`, l\'header `X-Read-TotalCount` viene omesso dalla risposta: migliori prestazioni a scapito del conteggio totale. Default `false`. |  ## Espansione oggetti correlati  Gli endpoint singoli e lista supportano il parametro `Expand`. Quando fornito, gli oggetti correlati vengono inclusi inline nella risposta anziché restituiti come riferimenti. È possibile specificare espansioni multiple separate da virgola.  ## Gestione errori  L\'API usa codici di stato HTTP standard e restituisce [RFC 7807](https://tools.ietf.org/html/rfc7807) Problem Details in caso di errore:  | Codice | Significato | |-|-| | `400` | Bad Request — validazione fallita o parametro obbligatorio mancante. | | `401` | Unauthorized — token mancante o scaduto. | | `403` | Forbidden — accesso negato (vedi sotto le possibili cause). | | `404` | Not Found — la risorsa richiesta non esiste. | | `409` | Conflict — conflitto di concorrenza. | | `422` | Unprocessable Entity — entità non processabile (es. token di concorrenza obsoleto). |  Un `403` può avere tre cause; nelle ultime due il campo `code` della risposta indica quale:  - il token non possiede lo scope richiesto dall\'endpoint; - `code: cloud_not_active` — l\'account lavora con una connessione locale e la Cloud API non espone i suoi dati. Per attivare il servizio cloud contatta l\'assistenza, poi richiedi un nuovo token: lo stato del servizio è letto al rilascio del token; - `code: company_license_not_active` — la licenza dell\'azienda indicata nel percorso è scaduta o non è attiva. Le altre aziende con licenza attiva restano accessibili.  Il motivo dell\'errore è sempre nel campo `detail`. Ogni risposta di errore riporta inoltre `overridable`: quando vale `true`, l\'errore di validazione è *forzabile* e basta ripetere la stessa richiesta aggiungendo `validationOverride=true` alla query string perché il servizio la accetti. È il caso delle anomalie formali su dati reali — la partita IVA di un fornitore estero, per esempio — che il cliente ha comunque bisogno di registrare.  ## Controllo della concorrenza  Le entità contengono una proprietà `ConcurrencyToken`. Quando si aggiorna un\'entità tramite `PUT`, il token nel body della richiesta viene confrontato con il valore memorizzato. Se differiscono, viene restituito un `422 Unprocessable Entity`. Usare sempre l\'ultimo token ricevuto da una risposta `GET` o `POST`. 
  *
- * The version of the OpenAPI document: 3.0.2
+ * The version of the OpenAPI document: 3.1.0
  * Contact: assistenza@gestionaleamica.com
  *
  * NOTE: This class is auto generated by OpenAPI Generator (https://openapi-generator.tech).
@@ -127,25 +127,25 @@ import {
 } from './DatiTrasporto';
 
 /**
- * Un documento (fattura, documento di trasporto, ecc.)
+ * 
  * @export
  * @interface Documento
  */
 export interface Documento {
     /**
-     * Identificativo univoco.
+     * 
      * @type {number}
      * @memberof Documento
      */
     id?: number;
     /**
-     * Il token di concorrenza implementa il controllo di concorrenza ottimistica: a ogni operazione di aggiornamento o cancellazione il valore del token sul database viene confrontato con quello sull'entità. Se i valori coincidono, l'operazione viene eseguita; se differiscono, si assume che un altro utente abbia effettuato una scrittura nel frattempo e l'aggiornamento viene rifiutato.
+     * 
      * @type {number}
      * @memberof Documento
      */
     concurrencyToken?: number;
     /**
-     * Identificativo univoco di `Anagrafica`.
+     * 
      * @type {number}
      * @memberof Documento
      */
@@ -157,7 +157,7 @@ export interface Documento {
      */
     anagrafica?: Anagrafica;
     /**
-     * Identificativo univoco di `CausaleDocumento`.
+     * 
      * @type {number}
      * @memberof Documento
      */
@@ -169,7 +169,7 @@ export interface Documento {
      */
     causaleDocumento?: CausaleDocumento;
     /**
-     * Identificativo univoco di `Anagrafica` dell'agente.
+     * 
      * @type {number}
      * @memberof Documento
      */
@@ -181,7 +181,7 @@ export interface Documento {
      */
     agente?: Anagrafica;
     /**
-     * Identificativo univoco di `Pagamento`.
+     * 
      * @type {number}
      * @memberof Documento
      */
@@ -193,7 +193,7 @@ export interface Documento {
      */
     pagamento?: Pagamento;
     /**
-     * Identificativo univoco di `Anagrafica` del vettore.
+     * 
      * @type {number}
      * @memberof Documento
      */
@@ -205,13 +205,13 @@ export interface Documento {
      */
     vettore?: Anagrafica;
     /**
-     * Identificativo univoco della causale IVA della cassa previdenziale.
+     * 
      * @type {number}
      * @memberof Documento
      */
     cassaPrevidenzialeCausaleIvaId?: number | null;
     /**
-     * Obsoleto. Non utilizzare.
+     * 
      * @type {number}
      * @memberof Documento
      */
@@ -223,7 +223,7 @@ export interface Documento {
      */
     cassaPrevidenzialeCausaleIva?: CausaleIva;
     /**
-     * Identificativo univoco di `Indirizzo` di destinazione.
+     * 
      * @type {number}
      * @memberof Documento
      */
@@ -235,7 +235,7 @@ export interface Documento {
      */
     destinazione?: Indirizzo;
     /**
-     * Identificativo univoco di `Valuta`.
+     * 
      * @type {number}
      * @memberof Documento
      */
@@ -247,7 +247,7 @@ export interface Documento {
      */
     valuta?: Valuta;
     /**
-     * Identificativo univoco di `CausaleMagazzino`.
+     * 
      * @type {number}
      * @memberof Documento
      */
@@ -259,7 +259,7 @@ export interface Documento {
      */
     causaleMagazzino?: CausaleMagazzino;
     /**
-     * Identificativo univoco della prima causale IVA.
+     * 
      * @type {number}
      * @memberof Documento
      */
@@ -271,7 +271,7 @@ export interface Documento {
      */
     iva1CausaleIva?: CausaleIva;
     /**
-     * Identificativo univoco della seconda causale IVA.
+     * 
      * @type {number}
      * @memberof Documento
      */
@@ -283,7 +283,7 @@ export interface Documento {
      */
     iva2CausaleIva?: CausaleIva;
     /**
-     * Identificativo univoco della terza causale IVA.
+     * 
      * @type {number}
      * @memberof Documento
      */
@@ -295,7 +295,7 @@ export interface Documento {
      */
     iva3CausaleIva?: CausaleIva;
     /**
-     * Identificativo univoco della quarta causale IVA.
+     * 
      * @type {number}
      * @memberof Documento
      */
@@ -307,319 +307,319 @@ export interface Documento {
      */
     iva4CausaleIva?: CausaleIva;
     /**
-     * Tipologia del documento.
+     * 
      * @type {string}
      * @memberof Documento
      */
     tipoDocumento?: DocumentoTipoDocumentoEnum;
     /**
-     * Tipo di documento fiscale.
+     * 
      * @type {string}
      * @memberof Documento
      */
     documentoFiscale?: DocumentoDocumentoFiscaleEnum;
     /**
-     * Indica se la destinazione della merce è diversa dall'indirizzo principale.
+     * 
      * @type {boolean}
      * @memberof Documento
      */
     destinazioneDiversa?: boolean;
     /**
-     * Indica se i prezzi inseriti sono da considerarsi al netto dell'IVA. Se `false`, l'IVA verrà scorporata in fase di elaborazione (app ufficiali).
+     * 
      * @type {boolean}
      * @memberof Documento
      */
     ivaEsclusa?: boolean;
     /**
-     * Indica se la ritenuta deve essere applicata anche all'importo della cassa previdenziale riportato nel documento.
+     * 
      * @type {boolean}
      * @memberof Documento
      */
     ritenutaIncludeCassaPrevidenziale?: boolean;
     /**
-     * Classe del documento.
+     * 
      * @type {string}
      * @memberof Documento
      */
     classeDocumento?: DocumentoClasseDocumentoEnum;
     /**
-     * Persona di contatto preferita, `AnagraficaNominativo1` oppure `AnagraficaNominativo2`.
+     * 
      * @type {number}
      * @memberof Documento
      */
     contatto?: number | null;
     /**
-     * La parte alfanumerica del numero del documento, se presente. Ad esempio, "bis" per il documento num. 99/bis.
+     * 
      * @type {string}
      * @memberof Documento
      */
     numeroParteTesto?: string | null;
     /**
-     * Il numero del documento, nella sua parte numerica. Ad esempio, 99 per il num. 99/bis.
+     * 
      * @type {number}
      * @memberof Documento
      */
     numeroParteNumerica?: number;
     /**
-     * Data del documento.
+     * 
      * @type {Date}
      * @memberof Documento
      */
     data?: Date;
     /**
-     * Lo stato corrente del documento. Ad esempio: Bozza, oppure Emesso.
+     * 
      * @type {string}
      * @memberof Documento
      */
     stato?: DocumentoStatoEnum;
     /**
-     * La data di scadenza, nel caso in cui il documento sia un preventivo.
+     * 
      * @type {Date}
      * @memberof Documento
      */
     dataScadenzaPreventivo?: Date | null;
     /**
-     * Data della prima scadenza di pagamento.
+     * 
      * @type {Date}
      * @memberof Documento
      */
     dataInizioScadenze?: Date | null;
     /**
-     * Sconto, in percentuale, da calcolare sull'intero importo del documento.
+     * 
      * @type {number}
      * @memberof Documento
      */
     scontoPercentuale?: number;
     /**
-     * Sconto, in valuta, da applicare all'intero importo del documento.
+     * 
      * @type {number}
      * @memberof Documento
      */
     scontoIncondizionatoImporto?: number;
     /**
-     * Importo dell'abbuono.
+     * 
      * @type {number}
      * @memberof Documento
      */
     abbuonoImporto?: number;
     /**
-     * Quota della ritenuta da applicare al documento.
+     * 
      * @type {number}
      * @memberof Documento
      */
     ritenutaPercentuale?: number;
     /**
-     * Contributo Enasarco da applicare al documento.
+     * 
      * @type {number}
      * @memberof Documento
      */
     enasarcoPercentuale?: number;
     /**
-     * Importo Enasarco.
+     * 
      * @type {number}
      * @memberof Documento
      */
     enasarcoImporto?: number;
     /**
-     * Quota dell'imponibile su cui applicare la ritenuta.
+     * 
      * @type {number}
      * @memberof Documento
      */
     quotaRitenutaSuImponibile?: number;
     /**
-     * Tasso di cambio rispetto all'Euro, nel caso in cui la `Valuta` del documento non sia l'Euro.
+     * 
      * @type {number}
      * @memberof Documento
      */
     cambio?: number;
     /**
-     * Nome della cassa previdenziale applicata al documento.
+     * 
      * @type {string}
      * @memberof Documento
      */
     cassaPrevidenzialeNome?: string | null;
     /**
-     * Aliquota (percentuale) della cassa previdenziale da applicare al documento.
+     * 
      * @type {number}
      * @memberof Documento
      */
     cassaPrevidenzialePercentuale?: number;
     /**
-     * Note.
+     * 
      * @type {string}
      * @memberof Documento
      */
     note?: string | null;
     /**
-     * Sconto riconosciuto in base alla modalità di pagamento utilizzata (es: +5% in caso di rimessa diretta).
+     * 
      * @type {number}
      * @memberof Documento
      */
     scontoPagamentoPercentuale?: number;
     /**
-     * Totale imponibile attribuibile a `Iva1CausaleIva`
+     * 
      * @type {number}
      * @memberof Documento
      */
     iva1Imponibile?: number;
     /**
-     * Totale imponibile attribuibile a `Iva2CausaleIva`
+     * 
      * @type {number}
      * @memberof Documento
      */
     iva2Imponibile?: number;
     /**
-     * Totale imponibile attribuibile a `Iva3CausaleIva`
+     * 
      * @type {number}
      * @memberof Documento
      */
     iva3Imponibile?: number;
     /**
-     * Totale imponibile attribuibile a `Iva4CausaleIva`
+     * 
      * @type {number}
      * @memberof Documento
      */
     iva4Imponibile?: number;
     /**
-     * Totale imponibile attribuibile a `Iva1CausaleIva` al lordo di eventuali sconti di fattura.
+     * 
      * @type {number}
      * @memberof Documento
      */
     iva1ImponibileLordo?: number;
     /**
-     * Totale imponibile attribuibile a `Iva2CausaleIva` al lordo di eventuali sconti di fattura.
+     * 
      * @type {number}
      * @memberof Documento
      */
     iva2ImponibileLordo?: number;
     /**
-     * Totale imponibile attribuibile a `Iva3CausaleIva` al lordo di eventuali sconti di fattura.
+     * 
      * @type {number}
      * @memberof Documento
      */
     iva3ImponibileLordo?: number;
     /**
-     * Totale imponibile attribuibile a `Iva4CausaleIva` al lordo di eventuali sconti di fattura.
+     * 
      * @type {number}
      * @memberof Documento
      */
     iva4ImponibileLordo?: number;
     /**
-     * Totale imposta per `Iva1CausaleIva`
+     * 
      * @type {number}
      * @memberof Documento
      */
     iva1Imposta?: number;
     /**
-     * Totale imposta per `Iva2CausaleIva`
+     * 
      * @type {number}
      * @memberof Documento
      */
     iva2Imposta?: number;
     /**
-     * Totale imposta per `Iva3CausaleIva`
+     * 
      * @type {number}
      * @memberof Documento
      */
     iva3Imposta?: number;
     /**
-     * Totale imposta per `Iva4CausaleIva`
+     * 
      * @type {number}
      * @memberof Documento
      */
     iva4Imposta?: number;
     /**
-     * Importo della ritenuta.
+     * 
      * @type {number}
      * @memberof Documento
      */
     totaleRitenuta?: number;
     /**
-     * Importo della cassa previdenziale.
+     * 
      * @type {number}
      * @memberof Documento
      */
     totaleCassaPrevidenziale?: number;
     /**
-     * Totale delle spese esenti e non esenti.
+     * 
      * @type {number}
      * @memberof Documento
      */
     totaleSpese?: number;
     /**
-     * Totale delle spese esenti da IVA.
+     * 
      * @type {number}
      * @memberof Documento
      */
     totaleSpeseEsenti?: number;
     /**
-     * Totale delle spese non esenti da IVA.
+     * 
      * @type {number}
      * @memberof Documento
      */
     totaleSpeseNonEsenti?: number;
     /**
-     * Importo della merce.
+     * 
      * @type {number}
      * @memberof Documento
      */
     totaleMerce?: number;
     /**
-     * Importo della merce scontata.
+     * 
      * @type {number}
      * @memberof Documento
      */
     totaleMerceScontata?: number;
     /**
-     * Totale imponibile, considerando tutte le causali IVA coinvolte.
+     * 
      * @type {number}
      * @memberof Documento
      */
     totaleImponibile?: number;
     /**
-     * Imposta IVA.
+     * 
      * @type {number}
      * @memberof Documento
      */
     totaleImposta?: number;
     /**
-     * Importi esenti da IVA.
+     * 
      * @type {number}
      * @memberof Documento
      */
     totaleEsente?: number;
     /**
-     * Importo totale del documento.
+     * 
      * @type {number}
      * @memberof Documento
      */
     totaleDocumento?: number;
     /**
-     * Netto a pagare.
+     * 
      * @type {number}
      * @memberof Documento
      */
     nettoAPagare?: number;
     /**
-     * Importo dello split payment.
+     * 
      * @type {number}
      * @memberof Documento
      */
     totaleSplitPayment?: number;
     /**
-     * Importo del bollo.
+     * 
      * @type {number}
      * @memberof Documento
      */
     bollo?: number;
     /**
-     * Nome del file XML.
+     * 
      * @type {string}
      * @memberof Documento
      */
     xmlFileName?: string | null;
     /**
-     * Numero di riferimento dell'amministrazione.
+     * 
      * @type {string}
      * @memberof Documento
      */
@@ -649,25 +649,25 @@ export interface Documento {
      */
     datiPA?: DatiPA;
     /**
-     * Righe del documento.
+     * 
      * @type {Array<BeneServizio>}
      * @memberof Documento
      */
     righe?: Array<BeneServizio> | null;
     /**
-     * Elenco delle spese.
+     * 
      * @type {Array<SpesaDocumento>}
      * @memberof Documento
      */
     speseDocumento?: Array<SpesaDocumento> | null;
     /**
-     * Elenco delle scadenze.
+     * 
      * @type {Array<Scadenza>}
      * @memberof Documento
      */
     scadenze?: Array<Scadenza> | null;
     /**
-     * Numero completo del documento. Ad esempio, `99/bis`. Generato a partire da `NumeroParteNumerica` e `NumeroParteTesto`. Nota bene: proprietà valorizzata solo nel caso di un'istanza salvata sul backend.
+     * 
      * @type {string}
      * @memberof Documento
      */
@@ -679,31 +679,31 @@ export interface Documento {
      */
     mediaFile?: DocumentoMediaFile;
     /**
-     * Obsoleto. Non utilizzare.
+     * 
      * @type {string}
      * @memberof Documento
      */
     allegato?: string | null;
     /**
-     * Causale del bonus fiscale.
+     * 
      * @type {string}
      * @memberof Documento
      */
     bonusFiscaleCausale?: string | null;
     /**
-     * Importo del bonus fiscale.
+     * 
      * @type {number}
      * @memberof Documento
      */
     bonusFiscaleImporto?: number;
     /**
-     * Percentuale del bonus fiscale.
+     * 
      * @type {number}
      * @memberof Documento
      */
     bonusFiscalePercentuale?: number;
     /**
-     * Numeri di invio (progressivi), così come restituiti dallo Sdi.
+     * 
      * @type {Array<ProgressivoInvio>}
      * @memberof Documento
      */

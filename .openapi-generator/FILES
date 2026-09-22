@@ -42,7 +42,6 @@ src/apis/PrezzoApi.ts
 src/apis/ProduttoreApi.ts
 src/apis/ProgressivoInvioApi.ts
 src/apis/RegistrazioneContabileApi.ts
-src/apis/RepartoApi.ts
 src/apis/RisorsaFinanziariaApi.ts
 src/apis/ScadenzaApi.ts
 src/apis/SituazioneApi.ts

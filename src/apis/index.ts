@@ -39,7 +39,6 @@ export * from './PrezzoApi';
 export * from './ProduttoreApi';
 export * from './ProgressivoInvioApi';
 export * from './RegistrazioneContabileApi';
-export * from './RepartoApi';
 export * from './RisorsaFinanziariaApi';
 export * from './ScadenzaApi';
 export * from './SituazioneApi';
