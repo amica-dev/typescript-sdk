@@ -79,7 +79,6 @@ export * from './ProgressivoInvio';
 export * from './RegistrazioneContabile';
 export * from './RegistrazioneContabileRiga';
 export * from './RegistrazioneContabileValidationResult';
-export * from './Reparto';
 export * from './ResoImportData';
 export * from './RicercaArticolo';
 export * from './RisorsaFinanziaria';

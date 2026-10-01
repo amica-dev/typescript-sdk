@@ -130,7 +130,6 @@ src/models/ProgressivoInvio.ts
 src/models/RegistrazioneContabile.ts
 src/models/RegistrazioneContabileRiga.ts
 src/models/RegistrazioneContabileValidationResult.ts
-src/models/Reparto.ts
 src/models/ResoImportData.ts
 src/models/RicercaArticolo.ts
 src/models/RisorsaFinanziaria.ts
