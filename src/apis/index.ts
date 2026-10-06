@@ -24,6 +24,7 @@ export * from './GiacenzaApi';
 export * from './GiornaleMagazzinoApi';
 export * from './GruppoMerceologicoApi';
 export * from './IndirizzoApi';
+export * from './InventarioApi';
 export * from './ListinoApi';
 export * from './MagazzinoApi';
 export * from './MarcaApi';

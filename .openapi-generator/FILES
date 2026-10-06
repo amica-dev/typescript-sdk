@@ -27,6 +27,7 @@ src/apis/GiacenzaApi.ts
 src/apis/GiornaleMagazzinoApi.ts
 src/apis/GruppoMerceologicoApi.ts
 src/apis/IndirizzoApi.ts
+src/apis/InventarioApi.ts
 src/apis/ListinoApi.ts
 src/apis/MagazzinoApi.ts
 src/apis/MarcaApi.ts
@@ -93,6 +94,7 @@ src/models/DocumentoComputeResult.ts
 src/models/DocumentoComputeResultRiepilogoIva.ts
 src/models/DocumentoImportData.ts
 src/models/DocumentoMediaFile.ts
+src/models/DocumentoTotali.ts
 src/models/FatturaElettronicaExportOptions.ts
 src/models/FatturaElettronicaExportResult.ts
 src/models/FatturaElettronicaImportResult.ts
@@ -108,6 +110,9 @@ src/models/Giacenza.ts
 src/models/GruppoMerceologico.ts
 src/models/ImpostazioniSdi.ts
 src/models/Indirizzo.ts
+src/models/Inventario.ts
+src/models/InventarioComputeResult.ts
+src/models/InventarioRiga.ts
 src/models/Listino.ts
 src/models/Magazzino.ts
 src/models/Marca.ts
