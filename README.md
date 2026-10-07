@@ -147,7 +147,7 @@ const config = new Configuration({
 const aziende = new AziendaApi(config);
 
 try {
-  const result = await aziende.apiVversionConfigAziendaGet({ version: "3" });
+  const result = await aziende.aziendaList();
   console.log(result);
 } catch (err) {
   console.error("Errore nella chiamata all'API:", err);
