@@ -3,6 +3,7 @@
 export * from './AnagraficaApi';
 export * from './AreaGeograficaApi';
 export * from './ArticoloApi';
+export * from './ArticoloColoreApi';
 export * from './ArticoloMediaFileApi';
 export * from './AziendaApi';
 export * from './BeneServizioApi';

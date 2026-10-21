@@ -6,6 +6,7 @@ package.json
 src/apis/AnagraficaApi.ts
 src/apis/AreaGeograficaApi.ts
 src/apis/ArticoloApi.ts
+src/apis/ArticoloColoreApi.ts
 src/apis/ArticoloMediaFileApi.ts
 src/apis/AziendaApi.ts
 src/apis/BeneServizioApi.ts
@@ -59,6 +60,7 @@ src/models/AnagraficaNominativo2.ts
 src/models/AnagraficaSedeLegale.ts
 src/models/AreaGeografica.ts
 src/models/Articolo.ts
+src/models/ArticoloColore.ts
 src/models/ArticoloMediaFile.ts
 src/models/Azienda.ts
 src/models/Banca.ts
@@ -121,6 +123,8 @@ src/models/ModelloContabile.ts
 src/models/ModelloContabileRiga.ts
 src/models/MovimentoMerce.ts
 src/models/MovimentoMerceRiga.ts
+src/models/MovimentoMerceRigaComputeData.ts
+src/models/MovimentoMerceRigaComputeResult.ts
 src/models/NaturaIva.ts
 src/models/Nazione.ts
 src/models/OrdiniImportData.ts
