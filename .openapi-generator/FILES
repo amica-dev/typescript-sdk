@@ -116,6 +116,13 @@ src/models/Inventario.ts
 src/models/InventarioComputeResult.ts
 src/models/InventarioRiga.ts
 src/models/Listino.ts
+src/models/ListinoComputeAggiungi.ts
+src/models/ListinoComputeData.ts
+src/models/ListinoComputeDuplica.ts
+src/models/ListinoComputeModificaPrezzi.ts
+src/models/ListinoComputeProvvigioni.ts
+src/models/ListinoComputeResult.ts
+src/models/ListinoComputeSconti.ts
 src/models/Magazzino.ts
 src/models/Marca.ts
 src/models/ModalitaPagamento.ts
